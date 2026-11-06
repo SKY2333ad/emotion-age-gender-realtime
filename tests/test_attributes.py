@@ -1,0 +1,401 @@
+"""Thuộc tính độc lập với cảm xúc: ONNX, tracking, lịch chạy, UI và hồi quy bản cũ."""
+import importlib.util
+import sys
+import tempfile
+import unittest
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import cv2
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'core'))
+import attributes
+import pipeline
+from ui_helpers import AGE_GROUPS, AGE_GROUP_THRESHOLDS, age_group, reference_age_group
+from ui_helpers import attribute_text, draw_results, result_row
+
+
+def attribute(age=30, p_male=0.8):
+    return {'age': float(age), 'gender': 'male' if p_male >= 0.5 else 'female',
+            'gender_prob': p_male if p_male >= 0.5 else 1 - p_male}
+
+
+def face(x=30, y=40, blendshapes=None):
+    return {'box': (x, y, 60, 70), 'angle': 5.0, 'blendshapes': blendshapes}
+
+
+class AttributeModelTests(unittest.TestCase):
+    def setUp(self):
+        self.frame = np.full((150, 200, 3), (10, 80, 240), np.uint8)
+        self.box = (60, 40, 60, 70)
+
+    def test_empty_images_invalid_boxes_do_not_load_model(self):
+        invalid = [(None, self.box), (np.empty((0, 0, 3), np.uint8), self.box),
+                   (np.zeros((30, 30), np.uint8), self.box), ([], self.box),
+                   (self.frame, None), (self.frame, (0, 0, 0, 10)),
+                   (self.frame, (0, 0, 10, -1)), (self.frame, (0, 0, float('nan'), 30)),
+                   (self.frame, (float('inf'), 0, 30, 30)), (self.frame, (0, 0, 20)),
+                   (self.frame, (900, 0, 20, 20)), (self.frame, (-30, 0, 20, 20))]
+        with patch.object(attributes, '_get_model') as loader:
+            for image, box in invalid:
+                with self.subTest(box=box):
+                    self.assertIsNone(attributes.predict_attributes(image, box))
+            loader.assert_not_called()
+
+    def test_affine_rgb_unscaled_without_rotation_and_input_unchanged(self):
+        before = self.frame.copy()
+        blob = attributes._make_blob(self.frame, self.box)
+        self.assertEqual(blob.shape, (1, 3, 96, 96))
+        self.assertEqual(blob.dtype, np.float32)
+        np.testing.assert_array_equal(blob[0, :, 48, 48], (240, 80, 10))
+        session = Mock()
+        session.run.return_value = [np.array([[0.1, 1.1, 0.314]], np.float32)]
+        with patch.object(attributes, '_get_model', return_value=(session, 'data', 'fc1')):
+            result = attributes.predict_attributes(self.frame, self.box, angle=45)
+        np.testing.assert_array_equal(session.run.call_args.args[1]['data'], blob)
+        self.assertAlmostEqual(result['age'], 31.4, places=4)
+        self.assertEqual(result['gender'], 'male')
+        self.assertAlmostEqual(result['gender_prob'], 1 / (1 + np.exp(-1)), places=6)
+        np.testing.assert_array_equal(self.frame, before)
+
+    def test_nonfinite_input_or_output_and_wrong_output_shape_return_none(self):
+        with patch.object(attributes, '_get_model') as loader:
+            self.assertIsNone(attributes.predict_attributes(np.full_like(self.frame, np.nan, dtype=np.float32), self.box))
+            loader.assert_not_called()
+        session = Mock()
+        with patch.object(attributes, '_get_model', return_value=(session, 'data', 'fc1')):
+            for output in ([[0, np.nan, .3]], [[0, 1, np.inf]], [[0, 1]], [[0, 1, -.1]]):
+                session.run.return_value = [np.array(output)]
+                self.assertIsNone(attributes.predict_attributes(self.frame, self.box))
+
+    def test_boundary_box_is_supported(self):
+        blob = attributes._make_blob(self.frame, (-10, -10, 60, 70))
+        self.assertEqual(blob.shape, (1, 3, 96, 96))
+        self.assertTrue(np.isfinite(blob).all())
+
+    def test_real_onnx_contract_when_model_is_available(self):
+        if not attributes.MODEL_PATH.is_file():
+            self.skipTest('Chưa tải models/genderage.onnx; các test mock và thiếu model vẫn chạy.')
+        result = attributes.predict_attributes(self.frame, self.box)
+        self.assertTrue(np.isfinite(result['age']))
+        self.assertIn(result['gender'], ('male', 'female'))
+        self.assertGreaterEqual(result['gender_prob'], .5)
+        self.assertLessEqual(result['gender_prob'], 1)
+        cache = attributes._get_model()
+        self.assertIs(cache, attributes._get_model())
+
+    def test_missing_model_has_actionable_vietnamese_error(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(attributes, 'MODEL_PATH', Path(tmp) / 'genderage.onnx'), \
+                patch.object(attributes, '_CACHE', None):
+            with self.assertRaisesRegex(FileNotFoundError, 'Thiếu mô hình tuổi/giới tính.*genderage.onnx'):
+                attributes.predict_attributes(self.frame, self.box)
+
+    def test_lazy_cache_is_thread_safe(self):
+        session = Mock()
+        session.get_inputs.return_value = [SimpleNamespace(name='data', type='tensor(float)', shape=['None', 3, 96, 96])]
+        session.get_outputs.return_value = [SimpleNamespace(name='fc1', shape=[1, 3])]
+        runtime = SimpleNamespace(SessionOptions=SimpleNamespace, InferenceSession=Mock(return_value=session))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'genderage.onnx'
+            path.write_bytes(b'onnx-test')
+            with patch.object(attributes, 'MODEL_PATH', path), patch.object(attributes, '_CACHE', None), \
+                    patch.dict(sys.modules, {'onnxruntime': runtime}):
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    results = list(executor.map(lambda _: attributes._get_model(), range(32)))
+                self.assertTrue(all(result is results[0] for result in results))
+                runtime.InferenceSession.assert_called_once()
+                options = runtime.InferenceSession.call_args.args[1]
+                self.assertEqual(options.intra_op_num_threads, 1)
+
+    def test_wrong_model_contract_is_rejected(self):
+        session = Mock()
+        session.get_inputs.return_value = [SimpleNamespace(name='data', type='tensor(float)', shape=[1, 3, 112, 112])]
+        session.get_outputs.return_value = [SimpleNamespace(name='fc1', shape=[1, 3])]
+        runtime = SimpleNamespace(SessionOptions=SimpleNamespace, InferenceSession=Mock(return_value=session))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'genderage.onnx'
+            path.touch()
+            with patch.object(attributes, 'MODEL_PATH', path), patch.object(attributes, '_CACHE', None), \
+                    patch.dict(sys.modules, {'onnxruntime': runtime}):
+                with self.assertRaisesRegex(RuntimeError, '96, 96'):
+                    attributes._get_model()
+                self.assertIsNone(attributes._CACHE)
+
+
+class AttributeTrackingTests(unittest.TestCase):
+    def setUp(self):
+        self.frame = np.full((300, 400, 3), 100, np.uint8)
+        self.detector = patch.object(pipeline, 'detect_faces', return_value=[face()]).start()
+        self.probs = {label: float(label == 'happy') for label in pipeline.LABELS}
+        self.emotion = patch.object(pipeline, 'predict', return_value=('happy', 1.0, self.probs)).start()
+        self.inference = patch.object(pipeline, 'predict_attributes', return_value=attribute()).start()
+        patch.object(pipeline, 'load_calibration',
+                     return_value={'gender_temperature': 1.0, 'age_intervals': {}}).start()
+        self.addCleanup(patch.stopall)
+
+    def test_new_face_runs_immediately_and_only_every_twelve_frames(self):
+        pipe = pipeline.Pipeline(attr_every=12)
+        for index in range(1, 26):
+            result = pipe.process_frame(self.frame)[0]
+            self.assertEqual(self.inference.call_count, 1 + (index - 1) // 12)
+            self.assertEqual(result['age'], 30)
+        # Mặt mới đến ở khung giữa chu kỳ vẫn suy luận ngay.
+        self.detector.return_value = [face(), face(260)]
+        pipe.process_frame(self.frame)
+        self.assertEqual(self.inference.call_count, 4)
+
+    def test_probability_mean_median_age_and_hysteresis(self):
+        pipe = pipeline.Pipeline(attr_every=1)
+        ages = [20, 90, 21, 22, 23, 24, 25]
+        genders = []
+        probabilities = [.51, .48, .51, .48, .51, .48, .51]
+        for age, probability in zip(ages, probabilities):
+            self.inference.return_value = attribute(age, probability)
+            result = pipe.process_frame(self.frame)[0]
+            genders.append(result['gender'])
+        self.assertEqual(set(genders), {'male'})
+        self.assertEqual(result['age'], np.median(ages))
+        self.assertAlmostEqual(result['gender_prob'], np.mean(probabilities))
+        self.inference.return_value = attribute(26, .02)
+        result = pipe.process_frame(self.frame)[0]
+        self.assertEqual(result['gender'], 'female')
+        self.assertAlmostEqual(result['gender_prob'], 1 - np.mean(probabilities + [.02]))
+
+    def test_calibration_softens_gender_and_adds_age_range_without_changing_label(self):
+        with patch.object(pipeline, 'load_calibration', return_value={
+                'gender_temperature': 2.0, 'age_intervals': {'20–29': [-5.0, 3.0]}}):
+            pipe = pipeline.Pipeline()
+        self.inference.return_value = attribute(30, .9)
+        result = pipe.process_frame(self.frame)[0]
+        self.assertEqual(result['gender'], 'male')
+        self.assertAlmostEqual(result['gender_prob'], attributes.calibrate_probability(.9, 2.0))
+        self.assertLess(result['gender_prob'], .9)
+        self.assertEqual(result['age_range'], (25.0, 33.0))
+
+    def test_each_face_has_own_history_and_movement_preserves_it(self):
+        pipe = pipeline.Pipeline(attr_every=1)
+        self.detector.return_value = [face(), face(260)]
+        self.inference.side_effect = [attribute(10, .9), attribute(60, .1),
+                                      attribute(12, .8), attribute(64, .2)]
+        first = pipe.process_frame(self.frame)
+        self.detector.return_value = [face(32), face(262)]
+        second = pipe.process_frame(self.frame)
+        self.assertEqual([r['age'] for r in first], [10, 60])
+        self.assertEqual([r['age'] for r in second], [11, 62])
+        self.assertEqual([r['gender'] for r in second], ['male', 'female'])
+        self.assertEqual(set(pipe._attr_hist), set(pipe._hist))
+        self.assertEqual(sorted(map(len, pipe._attr_hist.values())), [2, 2])
+
+    def test_disappearance_replacement_and_empty_frame_clear_buffers(self):
+        pipe = pipeline.Pipeline(attr_every=12, track_grace=0)
+        self.detector.return_value = [face(), face(260)]
+        pipe.process_frame(self.frame)
+        self.detector.return_value = [face(260)]
+        pipe.process_frame(self.frame)
+        self.assertEqual(set(pipe._attr_hist), {2})
+        self.detector.return_value = [face(30, 200)]  # Quá xa mọi track: phải là ID mới.
+        self.inference.return_value = attribute(55, .1)
+        self.assertEqual(pipe.process_frame(self.frame)[0]['age'], 55)
+        self.assertEqual(self.inference.call_count, 3)
+        self.assertEqual(set(pipe._attr_hist), {3})
+        self.detector.return_value = []
+        self.assertEqual(pipe.process_frame(self.frame), [])
+        self.assertEqual(pipe._attr_hist, {})
+        self.assertEqual(pipe._attr_results, {})
+        self.assertEqual(pipe._attr_last, {})
+        self.detector.return_value = [face(30, 200)]
+        pipe.process_frame(self.frame)
+        self.assertEqual(self.inference.call_count, 4)
+
+    def test_short_disappearance_keeps_track_id_and_history(self):
+        pipe = pipeline.Pipeline(attr_every=12, track_grace=3)
+        first = pipe.process_frame(self.frame)[0]
+        self.detector.return_value = []
+        for _ in range(3):
+            self.assertEqual(pipe.process_frame(self.frame), [])
+        self.detector.return_value = [face(36)]
+        second = pipe.process_frame(self.frame)[0]
+        self.assertEqual(second['track_id'], first['track_id'])
+        self.assertEqual(self.inference.call_count, 1)
+        self.detector.return_value = []
+        for _ in range(4):
+            pipe.process_frame(self.frame)
+        self.assertEqual(pipe._attr_hist, {})
+
+    def test_history_is_bounded_and_toggles_reset_context(self):
+        pipe = pipeline.Pipeline(attr_every=1, attr_history=3)
+        for age in (10, 20, 30, 40, 50):
+            self.inference.return_value = attribute(age)
+            result = pipe.process_frame(self.frame)[0]
+        self.assertEqual(result['age'], 40)
+        self.assertEqual(len(next(iter(pipe._attr_hist.values()))), 3)
+        pipe.attributes = False
+        result = pipe.process_frame(self.frame)[0]
+        self.assertIsNone(result['age'])
+        self.assertEqual(pipe._attr_hist, {})
+        self.assertEqual(self.inference.call_count, 5)
+        pipe.attributes = True
+        self.inference.return_value = attribute(70)
+        self.assertEqual(pipe.process_frame(self.frame)[0]['age'], 70)
+        self.assertEqual(self.inference.call_count, 6)
+        pipe.attr_every = 12
+        self.assertEqual(pipe.process_frame(self.frame)[0]['age'], 70)
+        self.assertEqual(self.inference.call_count, 7)
+        pipe.reset()
+        self.assertEqual(pipe._attr_hist, {})
+
+    def test_none_predictions_do_not_repeat_each_frame(self):
+        self.inference.return_value = None
+        pipe = pipeline.Pipeline(attr_every=12)
+        for _ in range(12):
+            result = pipe.process_frame(self.frame)[0]
+            self.assertEqual([result[k] for k in ('age', 'gender', 'gender_prob')], [None] * 3)
+        self.assertEqual(self.inference.call_count, 1)
+        self.inference.return_value = attribute(40)
+        self.assertEqual(pipe.process_frame(self.frame)[0]['age'], 40)
+        self.assertEqual(self.inference.call_count, 2)
+
+    def test_missing_model_keeps_emotion_and_reports_error_once_until_reset(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(attributes, 'MODEL_PATH', Path(tmp) / 'genderage.onnx'), \
+                patch.object(attributes, '_CACHE', None):
+            self.inference.side_effect = attributes.predict_attributes
+            pipe = pipeline.Pipeline()
+            for _ in range(25):
+                result = pipe.process_frame(self.frame)[0]
+                self.assertEqual(result['probs'], self.probs)
+                self.assertIsNone(result['age'])
+            self.assertIn('Thiếu mô hình tuổi/giới tính', pipe.attribute_error)
+            self.assertIn('genderage.onnx', pipe.attribute_error)
+            self.assertEqual(self.inference.call_count, 1)
+
+    def test_runtime_error_keeps_emotion(self):
+        self.inference.side_effect = RuntimeError('ONNX không chạy được')
+        pipe = pipeline.Pipeline()
+        self.assertEqual(pipe.process_frame(self.frame)[0]['probs'], self.probs)
+        self.assertIn('ONNX không chạy được', pipe.attribute_error)
+
+
+class EmotionRegressionTests(unittest.TestCase):
+    def test_enabled_and_disabled_match_frozen_legacy_pipeline(self):
+        spec = importlib.util.spec_from_file_location('pipeline_legacy',
+                   ROOT / 'tests' / 'fixtures' / 'pipeline_before_attributes.py')
+        legacy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(legacy)
+        frame = np.full((300, 400, 3), 100, np.uint8)
+        sequence = [[face(blendshapes={'jawOpen': .3}), face(260)],
+                    [face(31, blendshapes={'jawOpen': .4}), face(261)],
+                    [face(33)], [], [face(260, blendshapes={'jawOpen': .6})]]
+        predictions = [{label: (0.7 if label == target else 0.05) for label in pipeline.LABELS}
+                       for target in ('happy', 'fear', 'sad', 'angry', 'neutral', 'surprise', 'disgust')]
+
+        def run(module, enabled=None):
+            correction = SimpleNamespace(names=['jawOpen'],
+                predict=lambda probs, bs: {label: float(label == 'fear') for label in pipeline.LABELS})
+            index = 0
+
+            def emotion(*args):
+                nonlocal index
+                probs = predictions[index % len(predictions)]
+                index += 1
+                return max(probs, key=probs.get), max(probs.values()), probs
+
+            kwargs = {} if enabled is None else {'attributes': enabled, 'track_grace': 0, 'smoothing': 'mean'}
+            pipe = module.Pipeline(fusion_path='fusion.json', **kwargs)
+            output = []
+            with patch.object(module, 'Fusion', return_value=correction), \
+                    patch.object(module, 'detect_faces', side_effect=sequence * 2), \
+                    patch.object(module, 'predict', side_effect=emotion):
+                for step in range(10):
+                    if step == 5:
+                        pipe.crop_margin = .1
+                        pipe.align = False
+                    output.append(pipe.process_frame(frame))
+            return [[{k: v for k, v in r.items()
+                      if k not in ('age', 'age_range', 'gender', 'gender_prob', 'track_id', 'quality')}
+                     for r in results] for results in output]
+
+        expected = run(legacy)
+        with patch.object(pipeline, 'predict_attributes', return_value=attribute()) as inference:
+            self.assertEqual(run(pipeline, False), expected)
+            inference.assert_not_called()
+            self.assertEqual(run(pipeline, True), expected)
+            self.assertTrue(inference.called)
+
+    def test_real_emotion_model_and_fusion_are_identical_with_attributes_on_off(self):
+        # Dùng ảnh tổng hợp trong RAM; detector được cố định để chỉ so nhánh cảm xúc thật.
+        frame = np.random.default_rng(31).integers(0, 256, (180, 300, 3), dtype=np.uint8)
+        detected = face(blendshapes=None)
+        fusion_path = ROOT / 'models' / 'efficientnet_fusion.json'
+        cases = [('efficientnet', None, .15, True)]
+        if fusion_path.is_file():
+            import json
+            config = json.loads(fusion_path.read_text(encoding='utf-8'))
+            cases.append((config['base_model'], str(fusion_path), config['crop_config']['margin'],
+                          config['crop_config']['align']))
+            detected['blendshapes'] = {name: .2 for name in config['blendshape_names']}
+        for model, fusion, margin, align in cases:
+            disabled = pipeline.Pipeline(attributes=False, fusion_path=fusion, crop_margin=margin, align=align)
+            enabled = pipeline.Pipeline(attributes=True, fusion_path=fusion, crop_margin=margin, align=align)
+            with patch.object(pipeline, 'detect_faces', return_value=[detected]):
+                for _ in range(3):
+                    old = disabled.process_frame(frame, model=model)[0]
+                    new = enabled.process_frame(frame, model=model)[0]
+                    for key in ('label', 'prob', 'probs', 'raw_probs', 'top3', 'fusion_used'):
+                        self.assertEqual(old[key], new[key])
+                    if attributes.MODEL_PATH.is_file():
+                        self.assertIsNone(enabled.attribute_error)
+
+
+class AttributeUITests(unittest.TestCase):
+    def test_vietnamese_groups_and_export_preserve_raw_values(self):
+        self.assertEqual([age_group(x) for x in (0, *AGE_GROUP_THRESHOLDS)], AGE_GROUPS)
+        self.assertEqual([reference_age_group(x) for x in (0, 13, 20, 30, 40, 50)], AGE_GROUPS)
+        self.assertEqual(reference_age_group(12.49), '0–12')
+        self.assertEqual(reference_age_group(12.5), '13–19')
+        self.assertIsNone(age_group(None))
+        self.assertIsNone(age_group(float('nan')))
+        result = dict(attribute(30.3, .1), box=(30, 30, 60, 60), label='happy', prob=.8,
+                      probs={'happy': .8})
+        self.assertEqual(attribute_text(result), 'nữ, ~20–29 tuổi')
+        row = result_row(result, 'now', 'webcam', 'mediapipe', 'efficientnet')
+        self.assertEqual(row['age'], 30.3)
+        self.assertEqual(row['gender'], 'female')
+        self.assertEqual(row['prob_happy'], .8)
+        result.pop('age')
+        self.assertIsNone(result_row(result, '', '', '', '')['age'])
+
+    def test_drawing_attributes_preserves_input_and_disabled_overlay(self):
+        frame = np.zeros((160, 300, 3), np.uint8)
+        result = dict(box=(40, 50, 100, 100), label='happy', prob=.9)
+        disabled = draw_results(frame, [result])
+        explicit_none = draw_results(frame, [dict(result, age=None, gender=None, gender_prob=None)])
+        np.testing.assert_array_equal(disabled, explicit_none)
+        enabled = draw_results(frame, [dict(result, **attribute(25, .1))])
+        self.assertFalse(np.array_equal(enabled, disabled))
+        self.assertEqual(np.count_nonzero(frame), 0)
+
+    def test_streamlit_sidebar_and_session_statistics(self):
+        from streamlit.testing.v1 import AppTest
+        app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=15).run()
+        self.assertEqual(len(app.exception), 0)
+        toggle = next(c for c in app.checkbox if c.label == 'Nhận diện tuổi và giới tính')
+        self.assertTrue(toggle.value)
+        app.session_state['rows'] = [
+            result_row(dict(attribute(8, .9), label='happy', prob=.8, probs={'happy': .8}),
+                       '2026-11-06T08:00:00', 'webcam', 'mediapipe', 'efficientnet'),
+            result_row(dict(attribute(60, .1), label='sad', prob=.7, probs={'sad': .7}),
+                       '2026-11-06T08:00:01', 'webcam', 'mediapipe', 'efficientnet')]
+        app.run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(any('Tỉ lệ nam/nữ' in c.value for c in app.caption))
+        self.assertEqual(set(app.dataframe[0].value['Nhóm tuổi ước lượng']), {'0–12', '50+'})
+        next(c for c in app.checkbox if c.label == 'Nhận diện tuổi và giới tính').uncheck().run()
+        self.assertEqual(len(app.exception), 0)
+if __name__ == '__main__':
+    unittest.main()

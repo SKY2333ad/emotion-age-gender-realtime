@@ -1,0 +1,82 @@
+{
+  "method": "synthetic; 30 seeds cho làm mượt và thuộc tính",
+  "tracking": {
+    "cắt nhau": {
+      "frames": 45,
+      "center_matcher_id_switches": 0,
+      "tracker_id_switches": 0
+    },
+    "sát nhau, đổi thứ tự": {
+      "frames": 40,
+      "center_matcher_id_switches": 0,
+      "tracker_id_switches": 0
+    },
+    "che khuất ngắn": {
+      "frames": 40,
+      "center_matcher_id_switches": 1,
+      "tracker_id_switches": 0
+    },
+    "di chuyển nhanh": {
+      "frames": 10,
+      "center_matcher_id_switches": 9,
+      "tracker_id_switches": 0
+    },
+    "đi ngang vị trí bị che": {
+      "frames": 30,
+      "center_matcher_id_switches": 3,
+      "tracker_id_switches": 0
+    }
+  },
+  "smoothing": {
+    "noise=0.3 raw": {
+      "flips": 0.0,
+      "delay": 0.0
+    },
+    "noise=0.3 mean3": {
+      "flips": 0.0,
+      "delay": 1.0
+    },
+    "noise=0.3 adaptive": {
+      "flips": 0.0,
+      "delay": 0.09166666666666666
+    },
+    "noise=0.6 raw": {
+      "flips": 59.06666666666667,
+      "delay": 0.09166666666666666
+    },
+    "noise=0.6 mean3": {
+      "flips": 1.5,
+      "delay": 1.05
+    },
+    "noise=0.6 adaptive": {
+      "flips": 0.4,
+      "delay": 0.6583333333333333
+    },
+    "noise=0.9 raw": {
+      "flips": 189.13333333333333,
+      "delay": 1.275
+    },
+    "noise=0.9 mean3": {
+      "flips": 100.86666666666666,
+      "delay": 2.591666666666667
+    },
+    "noise=0.9 adaptive": {
+      "flips": 102.56666666666666,
+      "delay": 2.033333333333333
+    }
+  },
+  "attributes": {
+    "every=12 history=15": {
+      "age_delay": 84.0,
+      "gender_delay": 95.2,
+      "gender_flips": 0.0,
+      "age_jitter": 1.3899381816611998
+    },
+    "every=5 history=12": {
+      "age_delay": 27.5,
+      "gender_delay": 31.166666666666668,
+      "gender_flips": 0.0,
+      "age_jitter": 1.8676426064569844
+    }
+  }
+}

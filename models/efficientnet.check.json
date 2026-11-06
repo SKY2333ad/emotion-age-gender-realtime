@@ -1,0 +1,11 @@
+{
+  "keras_sha256": "5034df867c74972e648ec01107d52f40cc41177070ec2f96a35d9ccc09369787",
+  "onnx_sha256": "adaf85cc9074dddea29fe91747c68a0908449d7bc22d7b1753b09f98583ff154",
+  "images": 10000,
+  "seed": 42,
+  "max_abs_difference": 1.3023614883422852e-05,
+  "mean_abs_difference": 2.0460845610484414e-07,
+  "labels_changed": 0,
+  "threshold": 0.001,
+  "passed": true
+}

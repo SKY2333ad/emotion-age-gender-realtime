@@ -1,0 +1,86 @@
+...................2026-11-06 17:30:47.343 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+WARNING:tensorflow:From E:\emotion+age+gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\common\global_state.py:82: The name tf.reset_default_graph is deprecated. Please use tf.compat.v1.reset_default_graph instead.
+
+2026-11-06 17:30:48.440 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+...........E:\emotion+age+gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\tensorflow\core.py:171: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  return np.array(x)
+......2026-11-06 17:30:56.074 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-11-06 17:30:56.074 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1793961056.577016   10712 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1793961056.584407   19620 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1793961056.597811   19620 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+.......E:\emotion+age+gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\tensorflow\core.py:171: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  return np.array(x)
+efficientnet: accuracy=0.1429, macro-F1=0.0357, sad=0.0000, fear=0.0000
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmpz4xkww7c\report
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+Baseline validation macro-F1: 0.0357
+
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 454ms/step - accuracy: 0.1429 - loss: 1.9130
+Validation macro-F1=0.0357; sad=0.0000; fear=0.0000
+
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 177ms/step - accuracy: 0.1429 - loss: 1.9882 - val_accuracy: 0.1429 - val_loss: 1.9925 - val_macro_f1: 0.0357 - val_sad_f1: 0.0000e+00 - val_fear_f1: 0.0000e+00 - val_selected_macro_f1: 0.0357
+Model: C:\Users\Pc\AppData\Local\Temp\tmp319rz_ty\fine_tuned.keras
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmp319rz_ty\reports
+Khởi động lại app để xem checkpoint đã hoàn tất. Baseline vẫn là lựa chọn mặc định.
+usage: python.exe -m unittest [-h] (--data-dir DATA_DIR | --manifest MANIFEST)
+                              [--labels-file LABELS_FILE]
+                              [--images-dir IMAGES_DIR]
+                              [--initial-model INITIAL_MODEL]
+                              [--output OUTPUT] [--report-dir REPORT_DIR]
+                              [--epochs EPOCHS] [--batch-size BATCH_SIZE]
+                              [--learning-rate LEARNING_RATE]
+                              [--unfreeze-layers UNFREEZE_LAYERS]
+                              [--val-fraction VAL_FRACTION]
+                              [--test-fraction TEST_FRACTION]
+                              [--balance {class-weight,oversample,none}]
+                              [--loss {crossentropy,focal}]
+                              [--max-other-drop MAX_OTHER_DROP] [--seed SEED]
+                              [--patience PATIENCE] [--evaluate-test]
+                              [--dry-run]
+python.exe -m unittest: error: --output phải là file .keras mới; chọn tên khác nếu file đã tồn tại.
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+Baseline validation macro-F1: 0.0357
+
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 548ms/step - accuracy: 0.1429 - loss: 1.4834
+Validation macro-F1=0.0357; sad=0.0000; fear=0.0000
+
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 207ms/step - accuracy: 0.1429 - loss: 1.4855 - val_accuracy: 0.1429 - val_loss: 1.4913 - val_macro_f1: 0.0357 - val_sad_f1: 0.0000e+00 - val_fear_f1: 0.0000e+00 - val_selected_macro_f1: 0.0357
+...................Model: C:\Users\Pc\AppData\Local\Temp\tmp319rz_ty\focal.keras
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmp319rz_ty\focal_reports
+Khởi động lại app để xem checkpoint đã hoàn tất. Baseline vẫn là lựa chọn mặc định.
+C:\Users\Pc\AppData\Local\Temp\tmp02ne1r8a\prepared\manifest.jsonl
+Features train: 21/21
+Features validation: 7/7
+Fusion: C:\Users\Pc\AppData\Local\Temp\tmp02ne1r8a\fusion.json. Test chưa được dùng; chạy evaluate_webcam.py --split test sau khi chốt cấu hình.
+test_margin_0.10 {"sad": {"precision": 0.0, "recall": 0.0, "f1": 0.0, "support": 1}, "fear": {"precision": 0.0, "recall": 0.0, "f1": 0.0, "support": 1}}
+.....
+----------------------------------------------------------------------
+Ran 67 tests in 17.925s
+
+OK
+Report: C:\Users\Pc\AppData\Local\Temp\tmp02ne1r8a\evaluation
