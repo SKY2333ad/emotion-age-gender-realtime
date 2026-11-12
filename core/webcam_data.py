@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-LABELS = (ROOT / "models" / "labels.txt").read_text(encoding="utf-8").split()
+LABELS = (ROOT / "models" / "emotion" / "labels.txt").read_text(encoding="utf-8").split()
 CROP_VERSION = "square-affine-v1"
 
 
@@ -140,14 +140,3 @@ def check_content_leakage(splits):
                     raise ValueError(f'Ảnh trùng nội dung giữa {previous_split} và {name}: {path}')
             owners[digest] = (name, label)
 
-
-def quality(face, box, min_size=80, min_blur=35.0):
-    gray = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-    # Resize before blur measurement so camera resolution does not dominate.
-    gray = cv2.resize(gray, (100, 100), interpolation=cv2.INTER_AREA)
-    brightness = float(gray.mean())
-    blur = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-    reason = ("face too small" if min(box[2:]) < min_size else
-              "too dark / too bright" if not 35 <= brightness <= 225 else
-              "blurry" if blur < min_blur else "ok")
-    return {"brightness": brightness, "sharpness": blur, "reason": reason}

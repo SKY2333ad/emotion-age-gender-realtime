@@ -1,0 +1,16 @@
+{
+  "seconds": 12.0,
+  "frame": [
+    480,
+    640,
+    3
+  ],
+  "camera_frames": 199,
+  "processed": 176,
+  "camera_fps": 16.2,
+  "processed_fps": 14.3,
+  "mean_ms": 53.2,
+  "p95_ms": 59.7,
+  "frames_with_face": 176,
+  "track_ids": 1
+}

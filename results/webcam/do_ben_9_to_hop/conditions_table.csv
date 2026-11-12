@@ -1,0 +1,8 @@
+﻿condition,detector,model,frames,detect_rate,acc_happy,delta_happy,acc_surprise,delta_surprise,acc_neutral,delta_neutral,acc_3expr,base_acc_same_expr,delta_3expr
+Baseline,mediapipe,cnn,212,100.0,13.3,,61.3,,100.0,,58.2,58.2,0.0
+Low light,mediapipe,cnn,51,100.0,5.9,-7.5,47.1,-14.2,100.0,0.0,51.0,58.2,-7.2
+Backlight,mediapipe,cnn,93,100.0,38.7,25.4,71.0,9.7,100.0,0.0,69.9,58.2,11.7
+Distance 2 m,mediapipe,cnn,91,98.9,0.0,-13.3,0.0,-61.3,100.0,0.0,33.3,58.2,-24.9
+Angle 30°,mediapipe,cnn,90,100.0,0.0,-13.3,0.0,-61.3,100.0,0.0,33.3,58.2,-24.9
+Glasses,mediapipe,cnn,92,100.0,0.0,-13.3,0.0,-61.3,100.0,0.0,33.7,58.2,-24.5
+Face mask,mediapipe,cnn,91,100.0,0.0,-13.3,73.3,12.0,100.0,0.0,57.1,58.2,-1.1

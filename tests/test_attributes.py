@@ -79,7 +79,7 @@ class AttributeModelTests(unittest.TestCase):
 
     def test_real_onnx_contract_when_model_is_available(self):
         if not attributes.MODEL_PATH.is_file():
-            self.skipTest('Chưa tải models/genderage.onnx; các test mock và thiếu model vẫn chạy.')
+            self.skipTest('Chưa tải models/age_gender/genderage.onnx; các test mock và thiếu model vẫn chạy.')
         result = attributes.predict_attributes(self.frame, self.box)
         self.assertTrue(np.isfinite(result['age']))
         self.assertIn(result['gender'], ('male', 'female'))
@@ -132,7 +132,8 @@ class AttributeTrackingTests(unittest.TestCase):
         self.frame = np.full((300, 400, 3), 100, np.uint8)
         self.detector = patch.object(pipeline, 'detect_faces', return_value=[face()]).start()
         self.probs = {label: float(label == 'happy') for label in pipeline.LABELS}
-        self.emotion = patch.object(pipeline, 'predict', return_value=('happy', 1.0, self.probs)).start()
+        patch.object(pipeline, 'predict_batch',
+                     side_effect=lambda faces, model: [('happy', 1.0, self.probs)] * len(faces)).start()
         self.inference = patch.object(pipeline, 'predict_attributes', return_value=attribute()).start()
         patch.object(pipeline, 'load_calibration',
                      return_value={'gender_temperature': 1.0, 'age_intervals': {}}).start()
@@ -310,7 +311,9 @@ class EmotionRegressionTests(unittest.TestCase):
             output = []
             with patch.object(module, 'Fusion', return_value=correction), \
                     patch.object(module, 'detect_faces', side_effect=sequence * 2), \
-                    patch.object(module, 'predict', side_effect=emotion):
+                    patch.object(module, 'predict', create=True, side_effect=emotion), \
+                    patch.object(module, 'predict_batch', create=True,
+                                 side_effect=lambda faces, model: [emotion() for _ in faces]):
                 for step in range(10):
                     if step == 5:
                         pipe.crop_margin = .1
@@ -331,7 +334,7 @@ class EmotionRegressionTests(unittest.TestCase):
         # Dùng ảnh tổng hợp trong RAM; detector được cố định để chỉ so nhánh cảm xúc thật.
         frame = np.random.default_rng(31).integers(0, 256, (180, 300, 3), dtype=np.uint8)
         detected = face(blendshapes=None)
-        fusion_path = ROOT / 'models' / 'efficientnet_fusion.json'
+        fusion_path = ROOT / 'models' / 'emotion' / 'efficientnet_fusion.json'
         cases = [('efficientnet', None, .15, True)]
         if fusion_path.is_file():
             import json

@@ -1,0 +1,8 @@
+combo,label,precision,recall,f1,support
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,surprise,0.575,1.0,0.73,127
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,fear,,0.0,0.0,112
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,disgust,0.265,0.519,0.351,129
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,happy,,0.0,0.0,114
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,sad,0.596,0.488,0.536,121
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,angry,1.0,0.446,0.617,83
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,neutral,0.622,0.957,0.754,141

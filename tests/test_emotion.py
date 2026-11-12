@@ -1,4 +1,4 @@
-"""Hợp đồng dự đoán cảm xúc: ONNX giống Keras, quay về Keras khi không khớp, HSEmotion đúng thứ tự nhãn."""
+"""Hợp đồng dự đoán cảm xúc: ONNX giống Keras, quay về Keras khi không khớp, 3 model của báo cáo cùng hợp đồng."""
 import json
 import sys
 import tempfile
@@ -46,23 +46,52 @@ class EfficientNetOnnxTests(unittest.TestCase):
                 self.assertEqual(list(emotion.predict(FACE)[2]), emotion.LABELS)
 
 
-@unittest.skipUnless(emotion.HSEMOTION_PATH.is_file(), 'chưa có model HSEmotion')
-class HsemotionTests(unittest.TestCase):
-    def test_contract_matches_project_labels(self):
-        label, score, probs = emotion.predict(FACE, 'hsemotion')
-        self.assertEqual(list(probs), emotion.LABELS)
-        self.assertAlmostEqual(sum(probs.values()), 1, places=5)
-        self.assertEqual(label, max(probs, key=probs.get))
+class BatchTests(unittest.TestCase):
+    def test_batch_matches_one_face_at_a_time_and_keeps_order(self):
+        faces = [FACE, FACE[:, ::-1].copy(), FACE[40:200, 30:190].copy()]
+        models = emotion.MODEL_NAMES
+        for model in models:
+            batch = emotion.predict_batch(faces, model)
+            for face, (label, score, probs) in zip(faces, batch):
+                single = emotion.predict(face, model)
+                self.assertEqual(label, single[0])
+                np.testing.assert_allclose(list(probs.values()), list(single[2].values()), atol=1e-4)
+        self.assertEqual(emotion.predict_batch([], 'efficientnet'), [])
 
-    def test_label_order_maps_each_project_label_to_its_logit(self):
-        class Session:
-            def run(self, _, feed):
-                logits = np.zeros((1, 8), np.float32)
-                logits[0, emotion.HSEMOTION_ORDER.index('fear')] = 10
-                return [logits]
 
-        with patch.dict(emotion._ONNX_CACHE, {emotion.HSEMOTION_PATH: Session()}):
-            self.assertEqual(emotion.predict(FACE, 'hsemotion')[0], 'fear')
+class CameraThreadTests(unittest.TestCase):
+    def test_failed_reads_back_off_and_stop_waits_for_reader(self):
+        import pipeline
+
+        class BrokenCapture:
+            reads = released = 0
+
+            def read(self):
+                BrokenCapture.reads += 1
+                return False, None
+
+            def release(self):
+                BrokenCapture.released += 1
+
+        with patch.object(pipeline, 'open_camera', return_value=BrokenCapture()):
+            camera = pipeline.CameraThread()
+            import time
+            time.sleep(0.2)
+            camera.stop()
+        self.assertLess(BrokenCapture.reads, 50)          # trước đây quay vòng hàng nghìn lần trong 0,2 giây
+        self.assertFalse(camera._thread.is_alive())
+        self.assertEqual(BrokenCapture.released, 1)
+        self.assertEqual(camera.count, 0)
+
+
+class ReportModelTests(unittest.TestCase):
+    def test_three_report_models_are_available_and_follow_the_contract(self):
+        self.assertEqual(emotion.MODEL_NAMES[:3], emotion.REPORT_MODELS)
+        for model in emotion.REPORT_MODELS:
+            label, score, probs = emotion.predict(FACE, model)
+            self.assertEqual(list(probs), emotion.LABELS)
+            self.assertAlmostEqual(sum(probs.values()), 1, places=4)
+            self.assertEqual(label, max(probs, key=probs.get))
 
 
 if __name__ == '__main__':

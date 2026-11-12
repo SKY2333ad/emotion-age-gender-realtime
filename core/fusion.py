@@ -4,7 +4,18 @@ from pathlib import Path
 
 import numpy as np
 
-from webcam_data import LABELS, CROP_VERSION, file_hash
+from webcam_data import LABELS, CROP_VERSION, ROOT, file_hash
+
+DEFAULT_PATH = ROOT / 'models' / 'emotion' / 'efficientnet_fusion.json'
+
+
+def default_fusion(model_name):
+    """Bộ fusion app bật sẵn cho model này (cùng quy tắc với sidebar), hoặc None."""
+    try:
+        base = json.loads(DEFAULT_PATH.read_text(encoding='utf-8')).get('base_model')
+    except (OSError, ValueError):
+        return None
+    return str(DEFAULT_PATH) if base == model_name else None
 
 
 def softmax(logits):

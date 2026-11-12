@@ -1,6 +1,6 @@
 """
 predict.py – bộ phân loại cảm xúc
-face_bgr: ảnh mặt đã crop từ OpenCV (BGR, kích thước bất kỳ). Nhãn theo models/labels.txt:
+face_bgr: ảnh mặt đã crop từ OpenCV (BGR, kích thước bất kỳ). Nhãn theo models/emotion/labels.txt:
 surprise, fear, disgust, happy, sad, angry, neutral. Đường dẫn models/ tính từ vị trí file này, chạy ở thư mục nào cũng được.
 """
 import os
@@ -16,15 +16,21 @@ from webcam_data import file_hash
 from pathlib import Path
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(os.path.dirname(_HERE), "models")
+MODEL_DIR = os.path.join(os.path.dirname(_HERE), "models", "emotion")
 
 with open(os.path.join(MODEL_DIR, "labels.txt"), encoding="utf-8") as f:
     LABELS = [l.strip() for l in f.read().split("\n") if l.strip()]
 
+REPORT_MODELS = ['cnn', 'mobilenetv3', 'efficientnet']      # 3 model của báo cáo, train trên RAF-DB
+MODEL_TITLES = {'cnn': 'CNN', 'mobilenetv3': 'MobileNetV3-Small', 'efficientnet': 'EfficientNet-B0'}
+
+
 def discover_models(directory=MODEL_DIR):
-    """Expose the baseline and completed checkpoints that passed model selection."""
+    """efficientnet.keras (nhóm bàn giao) luôn có; model khác chỉ hiện khi train xong và có metadata hợp lệ."""
     names = ['efficientnet']
-    for path in sorted(Path(directory).glob('efficientnet_*.keras')):
+    for path in sorted(Path(directory).glob('*.keras')):
+        if path.stem == 'efficientnet':
+            continue
         metadata_path = path.with_suffix('.metadata.json')
         try:
             metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
@@ -33,15 +39,12 @@ def discover_models(directory=MODEL_DIR):
         if (metadata.get('status') == 'complete' and metadata.get('labels') == LABELS
                 and metadata.get('selection_passed') is not False):
             names.append(path.stem)
-    return names
+    return sorted(names, key=lambda name: (REPORT_MODELS.index(name) if name in REPORT_MODELS else 3, name))
 
 
 MODEL_NAMES = discover_models()
 DEFAULT_MODEL = 'efficientnet'
 EFFICIENTNET_ONNX = Path(MODEL_DIR) / 'efficientnet.onnx'
-HSEMOTION_PATH = Path(MODEL_DIR) / 'hsemotion_enet_b0_8_best_afew.onnx'
-HSEMOTION_ORDER = ['angry', 'contempt', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
-EXPERIMENTAL_MODELS = ['hsemotion'] if HSEMOTION_PATH.is_file() else []   # chỉ chọn tay, không phải mặc định
 ONNX_THREADS = 4
 _CACHE = {}
 _INFERENCE_CACHE = {}
@@ -109,23 +112,24 @@ def _efficientnet_session():
     return _ONNX_CACHE['efficientnet_checked']
 
 
-def hsemotion_batch(images_bgr, path=HSEMOTION_PATH):
-    """Tiền xử lý đúng theo gói hsemotion-onnx: RGB, 224×224, chuẩn hóa ImageNet; bỏ lớp contempt."""
-    rgb = [cv2.resize(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), (224, 224)) / 255 for image in images_bgr]
-    batch = ((np.stack(rgb) - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]).transpose(0, 3, 1, 2).astype('float32')
-    logits = _onnx_session(path).run(None, {'input': batch})[0][:, :8]
-    chosen = logits[:, [HSEMOTION_ORDER.index(label) for label in LABELS]]
-    exp = np.exp(chosen - chosen.max(axis=1, keepdims=True))
-    return exp / exp.sum(axis=1, keepdims=True)
+def probabilities(faces_bgr, model_name=DEFAULT_MODEL):
+    """Mảng (N, 7) theo LABELS; mọi mặt trong một lần gọi model."""
+    x = np.stack([prepare_face(face) for face in faces_bgr])   # (N, 100, 100, 3), giá trị 0-255
+    session = _efficientnet_session() if model_name == 'efficientnet' else None
+    return (session.run(None, {session.get_inputs()[0].name: x})[0] if session
+            else _get_inference(model_name)(x).numpy())
+
+
+def predict_batch(faces_bgr, model_name=DEFAULT_MODEL):
+    """[(nhãn, xác suất, dict 7 lớp)] cùng thứ tự với faces_bgr."""
+    if not faces_bgr:
+        return []
+    output = []
+    for probs in probabilities(faces_bgr, model_name):
+        i = int(probs.argmax())
+        output.append((LABELS[i], float(probs[i]), {l: float(p) for l, p in zip(LABELS, probs)}))
+    return output
 
 
 def predict(face_bgr, model_name=DEFAULT_MODEL):
-    if model_name == 'hsemotion':
-        probs = hsemotion_batch([face_bgr])[0]
-    else:
-        x = prepare_face(face_bgr)[None]            # (1, 100, 100, 3), giá trị 0-255
-        session = _efficientnet_session() if model_name == 'efficientnet' else None
-        probs = (session.run(None, {session.get_inputs()[0].name: x})[0][0] if session
-                 else _get_inference(model_name)(x).numpy()[0])
-    i = int(probs.argmax())
-    return LABELS[i], float(probs[i]), {l: float(p) for l, p in zip(LABELS, probs)}
+    return predict_batch([face_bgr], model_name)[0]

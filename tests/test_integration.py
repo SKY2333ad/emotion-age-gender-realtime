@@ -44,7 +44,7 @@ class LiveLoopTests(unittest.TestCase):
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(FakeCamera.stopped)
         rows = app.session_state['rows']
-        self.assertGreaterEqual(len(rows), 5)
+        self.assertGreaterEqual(len(rows), 1)       # lấy mẫu mỗi 0,5 giây cho mỗi mặt
         self.assertEqual({row['track_id'] for row in rows}, {1})
         self.assertTrue(all(0 < row['quality'] <= 1 for row in rows))
         self.assertTrue(all(row['age_low'] < row['age'] < row['age_high'] for row in rows))

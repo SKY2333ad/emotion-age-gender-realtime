@@ -1,0 +1,59 @@
+"""Validate EfficientNet label order, probability contract and inference with generated images."""
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "core"))
+import time
+from webcam_data import configure_console
+configure_console()
+
+import numpy as np
+
+CONTRACT_LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+CONTRACT_MODELS = ["efficientnet"]
+
+try:
+    from predict import predict, LABELS, MODEL_NAMES
+except Exception as e:
+    sys.exit(f"[LỖI] không import được predict.py / LABELS / MODEL_NAMES: {e}")
+
+ok = True
+
+
+def check(cond, msg):
+    global ok
+    print(("[OK]   " if cond else "[LỖI] ") + msg)
+    ok = ok and cond
+
+
+check(list(LABELS) == CONTRACT_LABELS, f"LABELS đúng thứ tự hợp đồng ({list(LABELS)})")
+missing = [m for m in CONTRACT_MODELS if m not in MODEL_NAMES]
+check(not missing, f"MODEL_NAMES = {list(MODEL_NAMES)}" + (f" (thiếu: {missing})" if missing else ""))
+from predict import REPORT_MODELS
+trained = [m for m in REPORT_MODELS if m in MODEL_NAMES]
+print(("[OK]   " if len(trained) == 3 else "[CHƯA] ") + f"Model của báo cáo đã có: {trained}"
+      + ("" if len(trained) == 3 else " (train phần còn thiếu bằng scripts/emotion/train_rafdb.py --arch ...)"))
+
+from detectors import DETECTORS, detect_faces
+for name in DETECTORS:
+    try:
+        detect_faces(np.zeros((120, 160, 3), np.uint8), name)
+        print(f"[OK]   detector {name}")
+    except RuntimeError as e:                       # thiếu file model: app vẫn chạy với detector khác
+        print(f"[CHƯA] detector {name}: {e}")
+
+face = (np.random.rand(160, 160, 3) * 255).astype(np.uint8)       # ảnh giả, chỉ để kiểm tra hình dạng đầu ra
+for m in MODEL_NAMES:
+    try:
+        predict(face, m)                                             # lần đầu nạp model
+        t = time.perf_counter()
+        lab, p, probs = predict(face, m)
+        ms = (time.perf_counter() - t) * 1000
+        good = (lab in CONTRACT_LABELS and 0 <= float(p) <= 1 and isinstance(probs, dict)
+                and list(probs) == CONTRACT_LABELS and abs(sum(probs.values()) - 1) < 1e-2
+                and abs(probs[lab] - float(p)) < 1e-6)
+        check(good, f"predict(face, '{m}') -> ({lab}, {float(p):.2f}, dict {len(probs)} lớp) | {ms:.0f} ms")
+    except Exception as e:
+        check(False, f"predict(face, '{m}') lỗi: {e}")
+
+print("\nĐỒNG BỘ ĐÚNG HỢP ĐỒNG" if ok else "\nCHƯA ĐỒNG BỘ - sửa các dòng [LỖI] rồi chạy lại")
+sys.exit(0 if ok else 1)

@@ -92,7 +92,7 @@ class ImprovementTests(unittest.TestCase):
 
     def test_fine_tuning_preserves_batchnorm_and_frozen_convolutions(self):
         from tensorflow import keras
-        from scripts.train_rafdb import configure_fine_tuning
+        from scripts.emotion.train_rafdb import configure_fine_tuning
         model = keras.Sequential([keras.layers.Input((20, 20, 3)), keras.layers.Conv2D(4, 3),
                                   keras.layers.BatchNormalization(), keras.layers.GlobalAveragePooling2D(),
                                   keras.layers.Dense(7, activation='softmax')])
@@ -107,7 +107,7 @@ class ImprovementTests(unittest.TestCase):
         self.assertFalse(np.array_equal(head_before, model.layers[-1].get_weights()[0]))
 
     def test_fusion_selection_keeps_baseline_for_missing_blendshapes(self):
-        from scripts.train_fusion import fit_correction
+        from scripts.emotion.train_fusion import fit_correction
         labels = np.tile(np.arange(7), 3)
         probabilities = np.full((len(labels), 7), 0.1)
         probabilities[:, 6] = 0.4
@@ -118,7 +118,7 @@ class ImprovementTests(unittest.TestCase):
         self.assertEqual(result['baseline_validation'], result['best_validation'])
 
     def test_batched_evaluation_keeps_test_images_without_blendshapes(self):
-        from scripts import evaluate_rafdb
+        from scripts.emotion import evaluate_rafdb
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             rows = []

@@ -1,0 +1,226 @@
+﻿who,expr_true,cond,frames,detect_rate,accuracy,most_predicted
+Vinh,happy,haar | cnn | sang=binh_thuong | goc=30 | xa=1m,30,0.9333333333333333,0.0,disgust
+Vinh,happy,haar | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,0.9333333333333333,0.0,surprise
+Vinh,happy,haar | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,0.9333333333333333,0.0,angry
+Vinh,happy,mediapipe | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,happy,mediapipe | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,happy,yolo | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,happy,yolo | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,happy,yolo | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,neutral,haar | cnn | sang=binh_thuong | goc=30 | xa=1m,30,0.7,1.0,neutral
+Vinh,neutral,haar | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,0.7,0.047619047619047616,surprise
+Vinh,neutral,haar | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,0.7,0.9523809523809523,neutral
+Vinh,neutral,mediapipe | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,surprise
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,1.0,neutral
+Vinh,surprise,haar | cnn | sang=binh_thuong | goc=30 | xa=1m,30,0.5333333333333333,0.125,neutral
+Vinh,surprise,haar | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,0.5333333333333333,0.875,surprise
+Vinh,surprise,haar | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,0.5333333333333333,0.375,neutral
+Vinh,surprise,mediapipe | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,surprise,mediapipe | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.5,neutral
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.16666666666666666,neutral
+Vinh,surprise,yolo | cnn | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,surprise,yolo | mobilenetv3 | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,surprise,yolo | efficientnet | sang=binh_thuong | goc=30 | xa=1m,30,1.0,0.0,neutral
+Vinh,angry,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,sad
+Vinh,angry,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,angry,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.3,neutral
+Vinh,angry,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,sad
+Vinh,angry,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,angry,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.43333333333333335,neutral
+Vinh,angry,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,angry,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,angry,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,disgust,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,disgust,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.06666666666666667,neutral
+Vinh,disgust,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.2,neutral
+Vinh,disgust,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,disgust,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,disgust,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,happy
+Vinh,disgust,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,disgust,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.1,neutral
+Vinh,disgust,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,fear,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,sad
+Vinh,fear,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,surprise
+Vinh,fear,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,fear,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,happy,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.03333333333333333,disgust
+Vinh,happy,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,angry
+Vinh,happy,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.16666666666666666,angry
+Vinh,happy,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.13333333333333333,disgust
+Vinh,happy,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,angry
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.7333333333333333,happy
+Vinh,happy,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.4,happy
+Vinh,happy,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.9666666666666667,happy
+Vinh,happy,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.5666666666666667,happy
+Vinh,neutral,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,sad
+Vinh,neutral,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,neutral
+Vinh,sad,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,1.0,sad
+Vinh,sad,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,sad,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.06666666666666667,neutral
+Vinh,sad,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.6666666666666666,sad
+Vinh,sad,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,disgust
+Vinh,sad,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,sad,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.6666666666666666,sad
+Vinh,sad,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,sad,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,30,1.0,0.0,neutral
+Vinh,surprise,haar | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.2903225806451613,sad
+Vinh,surprise,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.3870967741935484,surprise
+Vinh,surprise,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.22580645161290322,sad
+Vinh,surprise,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.6129032258064516,surprise
+Vinh,surprise,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.2903225806451613,sad
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.25806451612903225,sad
+Vinh,surprise,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.3870967741935484,sad
+Vinh,surprise,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.8709677419354839,surprise
+Vinh,surprise,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m,31,1.0,0.03225806451612903,sad
+Vinh,happy,haar | cnn | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.0,disgust
+Vinh,happy,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.0,neutral
+Vinh,happy,haar | efficientnet | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.7419354838709677,happy
+Vinh,happy,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=2m,31,0.967741935483871,0.0,neutral
+Vinh,happy,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,31,0.967741935483871,0.0,neutral
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=2m,31,0.967741935483871,0.43333333333333335,neutral
+Vinh,happy,yolo | cnn | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.0,neutral
+Vinh,happy,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.0,neutral
+Vinh,happy,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=2m,31,1.0,0.45161290322580644,neutral
+Vinh,neutral,haar | cnn | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.4666666666666667,disgust
+Vinh,neutral,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,haar | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,1.0,1.0,neutral
+Vinh,surprise,haar | cnn | sang=binh_thuong | goc=0 | xa=2m,30,0.9333333333333333,0.0,sad
+Vinh,surprise,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,0.9333333333333333,0.0,neutral
+Vinh,surprise,haar | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,0.9333333333333333,0.0,happy
+Vinh,surprise,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.0,neutral
+Vinh,surprise,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.26666666666666666,neutral
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.26666666666666666,neutral
+Vinh,surprise,yolo | cnn | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.0,neutral
+Vinh,surprise,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.16666666666666666,neutral
+Vinh,surprise,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=2m,30,1.0,0.23333333333333334,neutral
+Vinh,happy,haar | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.0,sad
+Vinh,happy,haar | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,happy,haar | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.5483870967741935,happy
+Vinh,happy,mediapipe | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.3870967741935484,neutral
+Vinh,happy,mediapipe | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.3225806451612903,neutral
+Vinh,happy,mediapipe | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.8064516129032258,happy
+Vinh,happy,yolo | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.0,neutral
+Vinh,happy,yolo | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.41935483870967744,neutral
+Vinh,happy,yolo | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.6451612903225806,happy
+Vinh,neutral,haar | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.0,sad
+Vinh,neutral,haar | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,haar | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,mediapipe | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,mediapipe | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7419354838709677,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,1.0,neutral
+Vinh,surprise,haar | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,0.9354838709677419,0.5172413793103449,surprise
+Vinh,surprise,haar | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,0.9354838709677419,0.7931034482758621,surprise
+Vinh,surprise,haar | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,0.9354838709677419,0.7586206896551724,surprise
+Vinh,surprise,mediapipe | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7096774193548387,surprise
+Vinh,surprise,mediapipe | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7096774193548387,surprise
+Vinh,surprise,mediapipe | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7096774193548387,surprise
+Vinh,surprise,yolo | cnn | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7096774193548387,surprise
+Vinh,surprise,yolo | mobilenetv3 | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.6774193548387096,surprise
+Vinh,surprise,yolo | efficientnet | sang=nguoc_sang | goc=0 | xa=1m,31,1.0,0.7096774193548387,surprise
+Vinh,happy,haar | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,happy,haar | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.47058823529411764,happy
+Vinh,happy,haar | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.5882352941176471,happy
+Vinh,happy,mediapipe | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.058823529411764705,disgust
+Vinh,happy,mediapipe | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.8823529411764706,happy
+Vinh,happy,mediapipe | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,1.0,happy
+Vinh,happy,yolo | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.058823529411764705,sad
+Vinh,happy,yolo | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.6470588235294118,happy
+Vinh,happy,yolo | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.8823529411764706,happy
+Vinh,neutral,haar | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,1.0,neutral
+Vinh,neutral,haar | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,fear
+Vinh,neutral,haar | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,neutral,mediapipe | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,disgust
+Vinh,neutral,mediapipe | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,neutral,yolo | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.7647058823529411,neutral
+Vinh,surprise,haar | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.29411764705882354,sad
+Vinh,surprise,haar | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,surprise,haar | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,surprise,mediapipe | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.47058823529411764,sad
+Vinh,surprise,mediapipe | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,surprise,mediapipe | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,surprise,yolo | cnn | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.35294117647058826,neutral
+Vinh,surprise,yolo | mobilenetv3 | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.058823529411764705,sad
+Vinh,surprise,yolo | efficientnet | sang=thieu_sang | goc=0 | xa=1m,17,1.0,0.0,sad
+Vinh,happy,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,0.6451612903225806,0.0,neutral
+Vinh,happy,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,0.6451612903225806,0.0,surprise
+Vinh,happy,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,0.6451612903225806,0.9,happy
+Vinh,happy,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.0,neutral
+Vinh,happy,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.0,surprise
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.8064516129032258,happy
+Vinh,happy,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.0,neutral
+Vinh,happy,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.0,neutral
+Vinh,happy,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.8709677419354839,happy
+Vinh,neutral,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.03225806451612903,disgust
+Vinh,neutral,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,0.7096774193548387,neutral
+Vinh,neutral,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,31,1.0,1.0,neutral
+Vinh,surprise,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,0.8666666666666667,0.0,neutral
+Vinh,surprise,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,0.8666666666666667,0.3076923076923077,neutral
+Vinh,surprise,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,0.8666666666666667,0.38461538461538464,neutral
+Vinh,surprise,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.0,neutral
+Vinh,surprise,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.5666666666666667,surprise
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.4666666666666667,neutral
+Vinh,surprise,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.0,neutral
+Vinh,surprise,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.2,neutral
+Vinh,surprise,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=kinh,30,1.0,0.26666666666666666,neutral
+Vinh,happy,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,neutral
+Vinh,happy,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,neutral
+Vinh,happy,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,1.0,happy
+Vinh,happy,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,neutral
+Vinh,happy,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,sad
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,1.0,happy
+Vinh,happy,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,neutral
+Vinh,happy,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,0.0,neutral
+Vinh,happy,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,31,1.0,1.0,happy
+Vinh,neutral,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.0,happy
+Vinh,neutral,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.0,happy
+Vinh,neutral,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,1.0,neutral
+Vinh,neutral,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.0,happy
+Vinh,surprise,haar | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,0.9333333333333333,0.8571428571428571,surprise
+Vinh,surprise,haar | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,0.9333333333333333,0.7142857142857143,surprise
+Vinh,surprise,haar | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,0.9333333333333333,0.03571428571428571,fear
+Vinh,surprise,mediapipe | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.7333333333333333,surprise
+Vinh,surprise,mediapipe | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.6333333333333333,surprise
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.0,fear
+Vinh,surprise,yolo | cnn | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.7333333333333333,surprise
+Vinh,surprise,yolo | mobilenetv3 | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.6333333333333333,surprise
+Vinh,surprise,yolo | efficientnet | sang=binh_thuong | goc=0 | xa=1m | che=khau_trang,30,1.0,0.0,fear

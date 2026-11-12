@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "core"))
 from preprocessing import prepare_face
-from scripts import train_rafdb as training
+from scripts.emotion import train_rafdb as training
 
 
 class RAFDBTests(unittest.TestCase):
@@ -29,19 +29,20 @@ class RAFDBTests(unittest.TestCase):
 
     def test_graph_inference_matches_eager_and_reuses_trace(self):
         import predict as classifier
-        model = classifier._get("efficientnet")
+        # cnn chỉ chạy bằng Keras graph; efficientnet đi đường ONNX nên không dùng để đếm số lần trace.
+        model = classifier._get("cnn")
         rng = np.random.default_rng(15)
         faces = [np.zeros((120, 160, 3), np.uint8),
                  np.full((160, 120, 3), 255, np.uint8),
                  rng.integers(0, 256, (145, 155, 3), dtype=np.uint8)]
-        inference = classifier._get_inference("efficientnet")
+        inference = classifier._get_inference("cnn")
         for face in faces:
             expected = model(prepare_face(face)[None], training=False).numpy()[0]
-            label, probability, probs = classifier.predict(face, "efficientnet")
+            label, probability, probs = classifier.predict(face, "cnn")
             np.testing.assert_allclose(list(probs.values()), expected, rtol=1e-4, atol=1e-5)
             self.assertEqual(label, classifier.LABELS[int(expected.argmax())])
             self.assertEqual(probability, probs[label])
-        self.assertIs(inference, classifier._get_inference("efficientnet"))
+        self.assertIs(inference, classifier._get_inference("cnn"))
         self.assertEqual(inference.experimental_get_tracing_count(), 1)
 
     def test_weights_and_stratified_split(self):
@@ -108,7 +109,7 @@ class RAFDBTests(unittest.TestCase):
         disgust = {label: float(label == "disgust") for label in training.LABELS}
         pipe = pipeline.Pipeline(smooth_n=3)
         with patch.object(pipeline, "detect_faces", return_value=[face]), \
-             patch.object(pipeline, "predict", side_effect=[("fear", 1, fear), ("disgust", 1, disgust)]) as predict:
+             patch.object(pipeline, "predict_batch", side_effect=[[("fear", 1, fear)], [("disgust", 1, disgust)]]) as predict:
             pipe.process_frame(frame)
             self.assertEqual(predict.call_args.args[1], "efficientnet")
             self.assertEqual(pipe.get_face_crop(frame, face["box"]).shape, (78, 78, 3))
@@ -161,6 +162,33 @@ class RAFDBTests(unittest.TestCase):
             focal_args[focal_args.index('--output') + 1] = str(root / 'focal.keras')
             focal_args[focal_args.index('--report-dir') + 1] = str(root / 'focal_reports')
             self.assertEqual(training.main(focal_args + ['--loss', 'focal', '--balance', 'oversample']), 0)
+            # Train mới một kiến trúc của báo cáo: không cần model ban đầu, metadata ghi kiến trúc.
+            cnn = root / 'cnn.keras'
+            self.assertEqual(training.main(['--data-dir', str(data), '--arch', 'cnn', '--output', str(cnn),
+                                            '--report-dir', str(root / 'cnn_reports'), '--epochs', '1',
+                                            '--batch-size', '7']), 0)
+            trained = keras.models.load_model(cnn, compile=False)
+            self.assertEqual((trained.input_shape, trained.output_shape), ((None, 100, 100, 3), (None, 7)))
+            metadata = json.loads(cnn.with_suffix('.metadata.json').read_text(encoding='utf-8'))
+            self.assertEqual((metadata['architecture'], metadata['initial_sha256']), ('cnn', None))
+
+    def test_split_manifest_keeps_report_split_and_drops_excluded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / 'split_manifest.csv'
+            manifest.write_text('path,class,original_split,split,group_id,dhash\n'
+                                'Image/a.jpg,happiness,train,train,1,0\nImage/b.jpg,anger,train,val,2,0\n'
+                                'Image/c.jpg,fear,test,test,3,0\nImage/d.jpg,sadness,train,excluded,3,0\n', encoding='utf-8')
+            train, val, test = training.manifest_samples(manifest, temporary)
+            self.assertEqual([(p.name, training.LABELS[y]) for p, y in train + val + test],
+                             [('a.jpg', 'happy'), ('b.jpg', 'angry'), ('c.jpg', 'fear')])
+
+    def test_report_architectures_share_the_input_contract(self):
+        from tensorflow import keras
+        for arch in training.ARCHITECTURES:
+            model = training.build_model(keras, arch, weights=None)
+            self.assertEqual((model.input_shape, model.output_shape), ((None, 100, 100, 3), (None, 7)))
+            probs = model(np.full((2, 100, 100, 3), 128, np.float32), training=False).numpy()
+            np.testing.assert_allclose(probs.sum(axis=1), 1, atol=1e-5)
 
 
 if __name__ == "__main__":

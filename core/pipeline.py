@@ -1,4 +1,4 @@
-"""MediaPipe + EfficientNet webcam pipeline. Square aligned crops, stable track IDs, quality-aware smoothing and optional learned blendshape correction. Run: python core/pipeline.py (a: align, 1/2: checkpoint, q: quit)."""
+"""Webcam pipeline: 3 detector (Haar, MediaPipe, YOLO26), các model cảm xúc, crop vuông, ID ổn định, làm mượt theo chất lượng, hiệu chỉnh blendshape (chỉ MediaPipe). Chạy: python core/pipeline.py (d: detector, a: căn chỉnh, 1-9: model, q: thoát)."""
 import collections
 import sys
 import threading
@@ -7,16 +7,14 @@ import time
 import cv2
 import numpy as np
 
-from detectors import detect_faces, crop_face, align_crop
-from predict import predict, LABELS, MODEL_NAMES, DEFAULT_MODEL
-from predict import MODEL_DIR
+from detectors import DETECTORS, detect_faces, crop_face, align_crop
+from predict import predict_batch, LABELS, MODEL_NAMES, DEFAULT_MODEL, MODEL_DIR
 from fusion import Fusion
 from attributes import calibrate_probability, load_calibration, predict_attributes
 from quality import EmotionSmoother, face_quality, weighted_mean, weighted_median
 from tracker import FaceTracker
 from ui_helpers import age_group
 from webcam_data import configure_console
-import os
 
 DETECT_EVERY = 1
 DETECT_WIDTH = 480
@@ -123,15 +121,13 @@ class Pipeline:
 
     def process_frame(self, frame_bgr, detector="mediapipe", model=None):
         model = model or DEFAULT_MODEL
-        if detector != 'mediapipe':
-            raise ValueError('Dự án chỉ sử dụng MediaPipe.')
         if frame_bgr is None or frame_bgr.size == 0:
             return []
         context = (detector, model, self.align, self.crop_margin, self.smooth_n,
                    self.detect_every, frame_bgr.shape[:2], str(self.fusion_path),
                    self.attributes, self.attr_every, self.attr_history, self.smoothing)
         if self._ctx != context:                # đổi cách crop/model -> bỏ lịch sử cũ
-            correction = (Fusion(self.fusion_path, os.path.join(MODEL_DIR, model + '.keras'),
+            correction = (Fusion(self.fusion_path, f'{MODEL_DIR}/{model}.keras',
                                  self.crop_margin, self.align) if self.fusion_path else None)
             self.reset()
             self._ctx = context
@@ -150,11 +146,11 @@ class Pipeline:
         keys = self.tracker.update([f['box'] for f, _ in crops])
         self._forget_lost_tracks()
 
+        predictions = predict_batch([face for _, face in crops], model)   # một lần gọi model cho mọi mặt
         out = []
-        for (f, face), key in zip(crops, keys):
+        for (f, _), key, (_, _, probs) in zip(crops, keys, predictions):
             box = f["box"]
             quality = face_quality(frame_bgr, box, f.get('angle', 0.0), f.get('yaw', 0.0))
-            _, _, probs = predict(face, model)
             raw_probs = probs.copy()
             fusion_used = False
             if (self._fusion and f['blendshapes'] and
@@ -215,8 +211,9 @@ class CameraThread:
         self.ok = self.cap is not None
         self.frame, self.running = None, self.ok
         self.count = 0            # tăng mỗi khung đọc được; người dùng bỏ qua khung đã xử lý
+        self._thread = threading.Thread(target=self._loop, daemon=True)
         if self.ok:
-            threading.Thread(target=self._loop, daemon=True).start()
+            self._thread.start()
 
     def _loop(self):
         while self.running:
@@ -224,14 +221,18 @@ class CameraThread:
             if ok:
                 self.frame = f
                 self.count += 1
+            else:
+                time.sleep(0.01)      # camera bị rút/lỗi: không quay vòng 100% CPU
 
     def read(self):
         return None if self.frame is None else self.frame.copy()
 
     def stop(self):
         self.running = False
-        time.sleep(0.05)
-        self.cap.release()
+        if self._thread.is_alive():
+            self._thread.join(timeout=1)    # chờ lần read() đang dở xong rồi mới giải phóng camera
+        if self.cap is not None:
+            self.cap.release()
 
 
 def main():
@@ -241,7 +242,7 @@ def main():
         sys.exit("Không mở được camera (kiểm tra webcam / quyền truy cập camera).")
     detector, model = "mediapipe", DEFAULT_MODEL
     model_keys = {ord(str(i + 1)): m for i, m in enumerate(MODEL_NAMES)}
-    print("MediaPipe | a = căn chỉnh bật/tắt | " + " | ".join(f"{i + 1} = {m}" for i, m in enumerate(MODEL_NAMES))
+    print("d = đổi detector | a = căn chỉnh bật/tắt | " + " | ".join(f"{i + 1} = {m}" for i, m in enumerate(MODEL_NAMES))
           + " | q = thoát")
     pipe, fps, prev = Pipeline(), 0.0, time.time()
     mirror = True     # lật gương như soi gương (đặt False nếu không cần)
@@ -262,12 +263,14 @@ def main():
         prev = now
         cv2.putText(frame, f"FPS {fps:.1f} | {detector} | {model} | align {'on' if pipe.align else 'off'}", (10, 25),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
-        cv2.putText(frame, "MediaPipe | 1/2: EfficientNet checkpoint | a: align | q: quit", (10, 50),
+        cv2.putText(frame, "d: detector | 1-9: model | a: align | q: quit", (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1)
         cv2.imshow("Emotion realtime", frame)
         k = cv2.waitKey(1) & 0xFF
         if k == ord("q"):
             break
+        elif k == ord("d"):
+            detector = DETECTORS[(DETECTORS.index(detector) + 1) % len(DETECTORS)]
         elif k == ord("a"):
             pipe.align = not pipe.align
         elif k in model_keys:

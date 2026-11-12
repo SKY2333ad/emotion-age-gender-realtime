@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'core'))
 sys.path.insert(0, str(ROOT))
 from quality import EmotionSmoother, face_quality, weighted_mean, weighted_median
-from scripts.evaluate_tracking import CenterMatcher, id_switches, scenarios
+from scripts.system.evaluate_tracking import CenterMatcher, id_switches, scenarios
 from tracker import FaceTracker, iou
 from webcam_data import read_image
 

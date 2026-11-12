@@ -1,0 +1,2 @@
+﻿cond,surprise,fear,disgust,happy,sad,angry,neutral,frames
+mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,1.0,0.0,0.5193798449612403,0.0,0.48760330578512395,0.4457831325301205,0.9574468085106383,827

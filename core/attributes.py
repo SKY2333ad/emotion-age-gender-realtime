@@ -6,7 +6,7 @@ import threading
 import cv2
 import numpy as np
 
-MODEL_PATH = Path(__file__).resolve().parents[1] / 'models' / 'genderage.onnx'
+MODEL_PATH = Path(__file__).resolve().parents[1] / 'models' / 'age_gender' / 'genderage.onnx'
 CALIBRATION_PATH = MODEL_PATH.with_name('genderage_calibration.json')
 INPUT_SIZE = 96
 # Chọn theo macro-F1 nhóm tuổi trên validation UTKFace khi thử 1.2–1.6.

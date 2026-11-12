@@ -1,0 +1,5 @@
+combo,factor,level,frames,detect_rate,accuracy,frames_with_face
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,light,binh_thuong,827,1.0,0.514,827
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,angle,0,827,1.0,0.514,827
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,dist,1,827,1.0,0.514,827
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,occl,none,827,1.0,0.514,827

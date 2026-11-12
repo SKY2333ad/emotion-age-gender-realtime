@@ -1,0 +1,118 @@
+2026-11-12 14:24:15.477102: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-11-12 14:24:18.547311: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+...................2026-11-12 14:24:21.386 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+WARNING:tensorflow:From E:\emotion-age-gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\common\global_state.py:82: The name tf.reset_default_graph is deprecated. Please use tf.compat.v1.reset_default_graph instead.
+
+2026-11-12 14:24:24.369 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+....2026-11-12 14:24:27.759 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+.WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794468271.373098   19820 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794468271.380721   20648 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794468271.391998   20648 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+.....2026-11-12 14:24:31.854305: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+........E:\emotion-age-gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\tensorflow\core.py:171: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  return np.array(x)
+......2026-11-12 14:24:40.025 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-11-12 14:24:40.025 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+.........E:\emotion-age-gender\emotion_realtime\venv\Lib\site-packages\keras\src\backend\tensorflow\core.py:171: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  return np.array(x)
+efficientnet: accuracy=0.1429, macro-F1=0.0357, sad=0.0000, fear=0.0000
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmpgcluzsni\report
+2026-11-12 14:24:47.100518: I tensorflow/core/framework/local_rendezvous.cc:407] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+Baseline validation macro-F1: 0.0357
+
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 440ms/step - accuracy: 0.1429 - loss: 1.99912026-11-12 14:24:47.772038: I tensorflow/core/framework/local_rendezvous.cc:407] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+
+Validation macro-F1=0.0357; sad=0.0000; fear=0.0000
+
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 181ms/step - accuracy: 0.1429 - loss: 1.9632 - val_accuracy: 0.1429 - val_loss: 1.9593 - val_macro_f1: 0.0357 - val_sad_f1: 0.0000e+00 - val_fear_f1: 0.0000e+00 - val_selected_macro_f1: 0.0357
+2026-11-12 14:24:47.862088: I tensorflow/core/framework/local_rendezvous.cc:407] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Model: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\fine_tuned.keras
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\reports
+Khởi động lại app để xem checkpoint đã hoàn tất. Baseline vẫn là lựa chọn mặc định.
+usage: python.exe -m unittest [-h] [--data-dir DATA_DIR]
+                              [--split-manifest SPLIT_MANIFEST]
+                              [--manifest MANIFEST]
+                              [--labels-file LABELS_FILE]
+                              [--images-dir IMAGES_DIR]
+                              [--arch {cnn,mobilenetv3,efficientnet}]
+                              [--initial-model INITIAL_MODEL]
+                              [--output OUTPUT] [--report-dir REPORT_DIR]
+                              [--epochs EPOCHS] [--batch-size BATCH_SIZE]
+                              [--learning-rate LEARNING_RATE]
+                              [--unfreeze-layers UNFREEZE_LAYERS]
+                              [--val-fraction VAL_FRACTION]
+                              [--test-fraction TEST_FRACTION]
+                              [--balance {class-weight,oversample,none}]
+                              [--loss {crossentropy,focal}]
+                              [--max-other-drop MAX_OTHER_DROP] [--seed SEED]
+                              [--patience PATIENCE] [--evaluate-test]
+                              [--dry-run]
+python.exe -m unittest: error: --output phải là file .keras mới; chọn tên khác nếu file đã tồn tại.
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+Baseline validation macro-F1: 0.0357
+
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 515ms/step - accuracy: 0.1429 - loss: 1.4187
+Validation macro-F1=0.0357; sad=0.0000; fear=0.0000
+
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 187ms/step - accuracy: 0.1429 - loss: 1.4522 - val_accuracy: 0.1429 - val_loss: 1.4471 - val_macro_f1: 0.0357 - val_sad_f1: 0.0000e+00 - val_fear_f1: 0.0000e+00 - val_selected_macro_f1: 0.0357
+2026-11-12 14:24:48.894757: I tensorflow/core/framework/local_rendezvous.cc:407] Local rendezvous is aborting with status: OUT_OF_RANGE: End of sequence
+Model: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\focal.keras
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\focal_reports
+Khởi động lại app để xem checkpoint đã hoàn tất. Baseline vẫn là lựa chọn mặc định.
+WARNING:tensorflow:5 out of the last 9 calls to <function TensorFlowTrainer._make_function.<locals>.multi_step_on_iterator at 0x000002A00372A7A0> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+label          train    val   test    class_weight
+surprise          2      2      2    1.000
+fear              2      2      2    1.000
+disgust           2      2      2    1.000
+happy             2      2      2    1.000
+sad               2      2      2    1.000
+angry             2      2      2    1.000
+neutral           2      2      2    1.000
+Baseline validation macro-F1: 0.0357
+
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m6s[0m 6s/step - accuracy: 0.0000e+00 - loss: 3.0182
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 249ms/step - accuracy: 0.0357 - loss: 2.9014 WARNING:tensorflow:6 out of the last 11 calls to <function TensorFlowTrainer._make_function.<locals>.multi_step_on_iterator at 0x000002A002F64900> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+
+Validation macro-F1=0.0357; sad=0.0000; fear=0.2500
+
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m7s[0m 1s/step - accuracy: 0.0714 - loss: 2.7846 - val_accuracy: 0.1429 - val_loss: 1.9459 - val_macro_f1: 0.0357 - val_sad_f1: 0.0000e+00 - val_fear_f1: 0.2500 - val_selected_macro_f1: 0.0357
+..................Model: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\cnn.keras
+Báo cáo: C:\Users\Pc\AppData\Local\Temp\tmplw07cclz\cnn_reports
+Khởi động lại app để xem checkpoint đã hoàn tất. Baseline vẫn là lựa chọn mặc định.
+C:\Users\Pc\AppData\Local\Temp\tmp0jocv3er\prepared\manifest.jsonl
+Features train: 21/21
+Features validation: 7/7
+Fusion: C:\Users\Pc\AppData\Local\Temp\tmp0jocv3er\fusion.json. Test chưa được dùng; chạy evaluate_webcam.py --split test sau khi chốt cấu hình.
+test_margin_0.10 {"sad": {"precision": 0.0, "recall": 0.0, "f1": 0.0, "support": 1}, "fear": {"precision": 0.0, "recall": 0.0, "f1": 0.0, "support": 1}}
+.....
+----------------------------------------------------------------------
+Ran 75 tests in 39.815s
+
+OK
+Report: C:\Users\Pc\AppData\Local\Temp\tmp0jocv3er\evaluation

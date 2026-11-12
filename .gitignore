@@ -1,9 +1,8 @@
 venv/
-data/
 __pycache__/
 *.pyc
-results/conditions_log.csv
-results/conditions_progress.txt
-results/webcam_baseline.csv
-results/webcam_hsemotion.csv
-results/webcam_ferplus.csv
+# DB tải về để train/đánh giá: không kèm dự án, chỉ giữ README hướng dẫn
+data/*/*
+!data/*/README.md
+results/webcam/conditions_progress.txt
+results/emotion/training/

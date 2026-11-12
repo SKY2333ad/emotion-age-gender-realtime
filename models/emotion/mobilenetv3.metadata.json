@@ -1,0 +1,25 @@
+{
+  "sha256": "a1cea23cc11e790c2783929c5eaf2b58e2f202f6c92c51d60c08249158da57d8",
+  "labels": [
+    "surprise",
+    "fear",
+    "disgust",
+    "happy",
+    "sad",
+    "angry",
+    "neutral"
+  ],
+  "status": "complete",
+  "selection_passed": true,
+  "architecture": "mobilenetv3",
+  "title": "MobileNetV3Small",
+  "trained_on": "RAF-DB basic (aligned 100x100)",
+  "trained_by": "Nguyễn Văn Quân (Người 1)",
+  "crop_config": {
+    "margin": 0.15,
+    "align": true,
+    "version": "square-affine-v1"
+  },
+  "source": "emotion_realtime_gui.zip, models/mobilenetv3.keras",
+  "report": "results/emotion/rafdb_674/comparison.csv"
+}

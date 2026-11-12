@@ -1,0 +1,42 @@
+Quay 330 khung từ webcam ... ngồi nhìn thẳng camera, giữ mặt trong khung
+Đã lưu video input: E:\emotion_realtime\emotion_realtime\results\benchmark\bench_input.mp4
+Máy: CPU: Intel(R) Core(TM) i5-10210U CPU @ 1.60GHz | Luồng logic: 8 | Hệ điều hành: Windows 11 | Python: 3.12.10 | OpenCV: 5.0.0 | RAM (GB): 15.7 | Tải CPU trước khi đo (%): 23.0 | Cắm sạc: True | tensorflow: 2.20.0 | keras: 3.13.2 | mediapipe: 1.1.1 | ultralytics: 8.4.190 | torch: 2.14.1+cpu | GPU: không (CPU)
+Input 640x480, 330 khung (30 warm-up + 300 đo), 30.1 fps | 9 tổ hợp × 3 lần lặp
+
+===== LẦN 1/3 (thứ tự: mediapipe+cnn, yolo+cnn, yolo+mobilenetv3, mediapipe+mobilenetv3, yolo+efficientnet, haar+efficientnet, mediapipe+efficientnet, haar+cnn, haar+mobilenetv3) =====
+  mediapipe + cnn: detect 21.0 ms | classify 71.9 ms | 10.7 FPS | p95 142.2 ms | có mặt 100% khung
+  yolo + cnn: detect 99.8 ms | classify 84.4 ms | 5.4 FPS | p95 236.6 ms | có mặt 100% khung
+  yolo + mobilenetv3: detect 89.6 ms | classify 268.5 ms | 2.8 FPS | p95 398.2 ms | có mặt 100% khung
+  mediapipe + mobilenetv3: detect 15.7 ms | classify 183.4 ms | 5.0 FPS | p95 218.6 ms | có mặt 100% khung
+  yolo + efficientnet: detect 75.5 ms | classify 411.0 ms | 2.1 FPS | p95 631.7 ms | có mặt 100% khung
+  haar + efficientnet: detect 18.4 ms | classify 322.5 ms | 2.9 FPS | p95 478.8 ms | có mặt 100% khung
+  mediapipe + efficientnet: detect 15.9 ms | classify 329.9 ms | 2.9 FPS | p95 452.8 ms | có mặt 100% khung
+  haar + cnn: detect 17.2 ms | classify 53.3 ms | 14.1 FPS | p95 86.4 ms | có mặt 100% khung
+  haar + mobilenetv3: detect 16.9 ms | classify 151.9 ms | 5.9 FPS | p95 207.1 ms | có mặt 100% khung
+
+===== LẦN 2/3 (thứ tự: yolo+mobilenetv3, haar+efficientnet, mediapipe+efficientnet, yolo+cnn, haar+cnn, mediapipe+cnn, mediapipe+mobilenetv3, haar+mobilenetv3, yolo+efficientnet) =====
+  yolo + mobilenetv3: detect 82.9 ms | classify 222.1 ms | 3.3 FPS | p95 333.1 ms | có mặt 100% khung
+  haar + efficientnet: detect 16.7 ms | classify 297.8 ms | 3.2 FPS | p95 355.0 ms | có mặt 100% khung
+  mediapipe + efficientnet: detect 14.2 ms | classify 293.8 ms | 3.2 FPS | p95 338.2 ms | có mặt 100% khung
+  yolo + cnn: detect 81.6 ms | classify 68.2 ms | 6.6 FPS | p95 163.9 ms | có mặt 100% khung
+  haar + cnn: detect 19.0 ms | classify 58.9 ms | 12.7 FPS | p95 92.1 ms | có mặt 100% khung
+  mediapipe + cnn: detect 14.0 ms | classify 49.9 ms | 15.5 FPS | p95 72.1 ms | có mặt 100% khung
+  mediapipe + mobilenetv3: detect 14.4 ms | classify 150.3 ms | 6.1 FPS | p95 190.5 ms | có mặt 100% khung
+  haar + mobilenetv3: detect 22.4 ms | classify 215.3 ms | 4.2 FPS | p95 358.0 ms | có mặt 100% khung
+  yolo + efficientnet: detect 101.4 ms | classify 447.0 ms | 1.8 FPS | p95 606.2 ms | có mặt 100% khung
+
+===== LẦN 3/3 (thứ tự: haar+efficientnet, mediapipe+efficientnet, yolo+mobilenetv3, yolo+efficientnet, yolo+cnn, haar+mobilenetv3, mediapipe+mobilenetv3, haar+cnn, mediapipe+cnn) =====
+  haar + efficientnet: detect 21.2 ms | classify 379.9 ms | 2.5 FPS | p95 448.3 ms | có mặt 100% khung
+  mediapipe + efficientnet: detect 16.6 ms | classify 354.2 ms | 2.7 FPS | p95 472.3 ms | có mặt 100% khung
+  yolo + mobilenetv3: detect 81.0 ms | classify 220.5 ms | 3.3 FPS | p95 330.5 ms | có mặt 100% khung
+  yolo + efficientnet: detect 80.8 ms | classify 358.8 ms | 2.3 FPS | p95 475.3 ms | có mặt 100% khung
+  yolo + cnn: detect 82.2 ms | classify 68.2 ms | 6.6 FPS | p95 164.4 ms | có mặt 100% khung
+  haar + mobilenetv3: detect 16.6 ms | classify 148.0 ms | 6.1 FPS | p95 186.5 ms | có mặt 100% khung
+  mediapipe + mobilenetv3: detect 14.3 ms | classify 149.5 ms | 6.1 FPS | p95 185.6 ms | có mặt 100% khung
+  haar + cnn: detect 16.9 ms | classify 51.4 ms | 14.5 FPS | p95 81.4 ms | có mặt 100% khung
+  mediapipe + cnn: detect 14.1 ms | classify 50.5 ms | 15.4 FPS | p95 72.7 ms | có mặt 100% khung
+
+Đo xong sau 36.2 phút.
+
+Đang xuất video minh chứng (3 detector + CNN) ...
+Đã lưu E:\emotion_realtime\emotion_realtime\results\benchmark\bench_demo.mp4

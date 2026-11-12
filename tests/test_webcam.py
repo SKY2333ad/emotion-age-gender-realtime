@@ -14,8 +14,8 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
 from detectors import align_crop, detect_faces
 from fusion import Fusion, features
-from webcam_data import LABELS, CROP_VERSION, split_subjects, check_content_leakage, file_hash, quality
-from scripts.train_fusion import fit_correction
+from webcam_data import LABELS, CROP_VERSION, split_subjects, check_content_leakage, file_hash
+from scripts.emotion.train_fusion import fit_correction
 from webcam_data import write_image, load_manifest
 
 
@@ -49,12 +49,6 @@ class WebcamTests(unittest.TestCase):
         self.assertEqual(align_crop(frame, (0, 0, 60, 80), 25, 0.15).shape, (104, 104, 3))
         with self.assertRaises(ValueError):
             detect_faces(frame, 'unsupported')
-
-    def test_capture_quality_rejects_dark_blurry_and_tiny_faces(self):
-        self.assertEqual(quality(np.zeros((90, 90, 3), np.uint8), (0, 0, 90, 90))['reason'],
-                         'too dark / too bright')
-        self.assertEqual(quality(np.full((90, 90, 3), 100, np.uint8), (0, 0, 90, 90))['reason'], 'blurry')
-        self.assertEqual(quality(np.full((90, 90, 3), 100, np.uint8), (0, 0, 30, 30))['reason'], 'face too small')
 
     def test_fusion_learns_and_guards_checkpoint_and_crop(self):
         labels = np.tile(np.arange(7), 5)
@@ -92,7 +86,7 @@ class WebcamTests(unittest.TestCase):
         probs = {label: float(label == 'sad') for label in LABELS}
         with patch.object(pipeline, 'Fusion') as correction, \
                 patch.object(pipeline, 'detect_faces', return_value=[face]) as detector, \
-                patch.object(pipeline, 'predict', return_value=('sad', 1, probs)):
+                patch.object(pipeline, 'predict_batch', side_effect=lambda faces, model: [('sad', 1, probs)] * len(faces)):
             correction.return_value.predict.return_value = probs
             pipe = pipeline.Pipeline(detect_every=3, fusion_path='test.json')
             for _ in range(3):
@@ -102,7 +96,8 @@ class WebcamTests(unittest.TestCase):
             self.assertEqual(detector.call_count, 3)
 
     def test_manifest_recrop_fusion_and_test_report_work_together(self):
-        from scripts import prepare_webcam, train_fusion, evaluate_webcam
+        from scripts.data import prepare_webcam
+        from scripts.emotion import train_fusion, evaluate_webcam
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             manifest = root / 'manifest.jsonl'
@@ -145,7 +140,7 @@ class WebcamTests(unittest.TestCase):
         import pipeline
         frame = np.ones((120, 120, 3), np.uint8)
         with patch.object(pipeline, 'Fusion', side_effect=ValueError('wrong checkpoint')) as correction, \
-                patch.object(pipeline, 'predict') as classifier:
+                patch.object(pipeline, 'predict_batch') as classifier:
             pipe = pipeline.Pipeline(fusion_path='wrong.json')
             for _ in range(2):
                 with self.assertRaisesRegex(ValueError, 'wrong checkpoint'):
@@ -161,7 +156,7 @@ class WebcamTests(unittest.TestCase):
         fear = {label: float(label == 'fear') for label in LABELS}
         with patch.object(pipeline, 'Fusion') as correction, \
                 patch.object(pipeline, 'detect_faces', side_effect=[[face], [dict(face, blendshapes=None)]]), \
-                patch.object(pipeline, 'predict', return_value=('sad', 1, sad)):
+                patch.object(pipeline, 'predict_batch', side_effect=lambda faces, model: [('sad', 1, sad)] * len(faces)):
             correction.return_value.predict.return_value = fear
             pipe = pipeline.Pipeline(fusion_path='test.json')
             self.assertEqual(pipe.process_frame(frame)[0]['label'], 'fear')

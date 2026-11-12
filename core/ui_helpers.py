@@ -51,11 +51,6 @@ def _attribute_font():
     return ImageFont.load_default()
 
 
-def filter_results(results, threshold):
-    """Giữ kết quả có prob >= threshold (0..1)."""
-    return [r for r in (results or []) if float(r.get("prob", 0.0)) >= threshold]
-
-
 def draw_results(frame_bgr, results):
     """Vẽ khung và nhãn lên bản sao của ảnh (pipeline không tự vẽ)."""
     out = frame_bgr.copy()

@@ -1,0 +1,2 @@
+combo,frames,detect_rate,accuracy,macro_f1
+mediapipe + efficientnet | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,827,1.0,0.514,0.427

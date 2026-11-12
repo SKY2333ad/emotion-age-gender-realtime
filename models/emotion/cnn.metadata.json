@@ -1,0 +1,25 @@
+{
+  "sha256": "d5217105315409f45ae18ecd8c0cf74cb1c766a9402051e1b0816b230ea71950",
+  "labels": [
+    "surprise",
+    "fear",
+    "disgust",
+    "happy",
+    "sad",
+    "angry",
+    "neutral"
+  ],
+  "status": "complete",
+  "selection_passed": true,
+  "architecture": "cnn",
+  "title": "CNN tự xây",
+  "trained_on": "RAF-DB basic (aligned 100x100)",
+  "trained_by": "Nguyễn Văn Quân (Người 1)",
+  "crop_config": {
+    "margin": 0.15,
+    "align": true,
+    "version": "square-affine-v1"
+  },
+  "source": "emotion_realtime_gui.zip, models/cnn.keras",
+  "report": "results/emotion/rafdb_674/comparison.csv"
+}

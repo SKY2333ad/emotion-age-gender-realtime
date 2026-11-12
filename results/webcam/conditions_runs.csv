@@ -1,0 +1,8 @@
+﻿who,expr_true,cond,frames,detect_rate,accuracy,most_predicted
+Vinh,surprise,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,127,1.0,1.0,surprise
+Vinh,fear,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,112,1.0,0.0,surprise
+Vinh,disgust,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,129,1.0,0.5193798449612403,disgust
+Vinh,happy,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,114,1.0,0.0,disgust
+Vinh,sad,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,121,1.0,0.48760330578512395,disgust
+Vinh,angry,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,83,1.0,0.4457831325301205,disgust
+Vinh,neutral,mediapipe | efficientnet | sang=binh_thuong | goc=0 | xa=1m | crop_margin=0.15 | smooth_n=adaptive | fusion_used=1,141,1.0,0.9574468085106383,neutral

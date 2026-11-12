@@ -1,0 +1,22 @@
+CẤU HÌNH BENCHMARK
+Thời điểm: 2026-10-27 16:25
+Input: results\benchmark\bench_input.mp4 (640x480, 30.1 fps, 330 khung dùng)
+Warm-up: 30 khung trước mỗi lần đo, đo: 300 khung, lặp: 3 lần, thứ tự xáo trộn seed 42
+Detector thu khung về rộng 480 px, phân loại mặt đầu tiên tìm được
+Tổ hợp: haar+cnn, haar+mobilenetv3, haar+efficientnet, mediapipe+cnn, mediapipe+mobilenetv3, mediapipe+efficientnet, yolo+cnn, yolo+mobilenetv3, yolo+efficientnet
+
+MÁY
+CPU: Intel(R) Core(TM) i5-10210U CPU @ 1.60GHz
+Luồng logic: 8
+Hệ điều hành: Windows 11
+Python: 3.12.10
+OpenCV: 5.0.0
+RAM (GB): 15.7
+Tải CPU trước khi đo (%): 23.0
+Cắm sạc: True
+tensorflow: 2.20.0
+keras: 3.13.2
+mediapipe: 1.1.1
+ultralytics: 8.4.190
+torch: 2.14.1+cpu
+GPU: không (CPU)

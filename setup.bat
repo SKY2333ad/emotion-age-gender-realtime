@@ -31,7 +31,7 @@ if errorlevel 1 (
 )
 echo.
 echo === Kiem tra he thong ===
-python scripts\check_sync.py
+python scripts\system\check_sync.py
 echo.
 echo Xong. Chay ung dung bang file run_app.bat
 pause
