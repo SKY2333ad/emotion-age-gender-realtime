@@ -39,8 +39,8 @@ Kiểm tra code (73 test, khoảng 30 giây):
 | Xác suất giới tính | Đã hiệu chuẩn, ECE từ 0,094 xuống 0,009 |
 | Giới tính, UTKFace | Đúng 85,4% |
 | Tuổi, UTKFace | Sai trung bình 10,3 năm, đúng nhóm tuổi 47,4% |
-| Cảm xúc, RAF-DB test (3.068 ảnh) | Accuracy 79,8%, macro-F1 0,713 (EfficientNet, chưa có fusion) |
-| Cảm xúc, RAF-DB validation | Accuracy 84,7%, macro-F1 0,819 (EfficientNet + fusion; lạc quan vì model đã thấy ảnh train) |
+| Cảm xúc, RAF-DB test (3.068 ảnh, crop như app) | Accuracy 80,3%, macro-F1 0,722 (EfficientNet + fusion, lề 0) |
+| Cảm xúc, RAF-DB validation | Accuracy 90,6%, macro-F1 0,882 (EfficientNet + fusion; lạc quan vì model đã thấy ảnh train) |
 | **Cảm xúc, webcam thật** | **Chưa đo trên bản mới.** Bản cũ, 1 người, quay chính diện: chỉ 34,4% |
 
 **Cần biết trước khi demo:**
@@ -149,6 +149,8 @@ Máy đo: Intel i5-10210U, 16 GB RAM, chỉ CPU. Chọn cấu hình chỉ trên 
 UTKFace test, 18.780 ảnh, CI 95% bootstrap theo ảnh: MAE tuổi 10,27 (10,14–10,41), nhóm tuổi 47,4% (46,7–48,1), macro-F1 43,9% (43,2–44,6), giới tính 85,4% (84,8–85,9). Nhãn không phải tự khai và không có ID người. Không đánh giá theo chủng tộc vì không có dữ liệu tự khai hợp lệ.
 
 RAF-DB test, 3.068 ảnh, CI 95% bootstrap theo ảnh của macro-F1: EfficientNet 0,713 (0,689–0,736), HSEmotion 0,563 (0,540–0,584); mức chênh 0,122–0,177, nằm hẳn trên 0 nên giữ EfficientNet làm mặc định. HSEmotion nhận ảnh RAF-DB 100×100 phóng lên 224×224, khác ảnh AffectNet nó được train. Dữ liệu train ban đầu của `efficientnet.keras` chưa rõ, nhưng trên validation tách từ RAF-DB train nó đạt 89,3% so với 79,8% trên test (`results/rafdb_validation/`), tức gần như chắc đã thấy ảnh train. Vì vậy chỉ số test mới đáng tin.
+
+**Lề crop 0, không phải 0,15.** Ảnh RAF-DB lúc train được cắt sát mặt. Cũng 2.740 ảnh test, cắt như app với lề 0 đạt 80,6%, lề 0,15 chỉ còn 72,9%; HSEmotion cũng tốt nhất ở lề 0 (70,0% so với 67,9%). Vì vậy app và fusion dùng lề 0; fusion đã train lại trên RAF-DB cắt lề 0 (`prepare_rafdb.py --margin 0`). Kết quả: `results/rafdb_test_fusion/`.
 
 Đã thử nhưng không có lợi: TTA lật ngang, fit lại ngưỡng nhóm tuổi, fine-tune EfficientNet trên RAF-DB. Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
 

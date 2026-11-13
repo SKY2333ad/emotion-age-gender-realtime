@@ -30,7 +30,7 @@ GENDER_HYSTERESIS = 0.05
 
 
 class Pipeline:
-    def __init__(self, smooth_n=SMOOTH_N, detect_every=DETECT_EVERY, align=True, crop_margin=0.15,
+    def __init__(self, smooth_n=SMOOTH_N, detect_every=DETECT_EVERY, align=True, crop_margin=0.0,
                  fusion_path=None, attributes=True, attr_every=ATTR_EVERY, attr_history=ATTR_HISTORY,
                  track_grace=TRACK_GRACE, smoothing='adaptive', quality_gate=False):
         if smooth_n < 1 or detect_every < 1 or not 0 <= crop_margin <= 0.5:

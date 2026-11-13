@@ -66,7 +66,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest', required=True, type=Path)
     parser.add_argument('--model', choices=MODEL_NAMES, default=DEFAULT_MODEL)
-    parser.add_argument('--margin', type=float, default=0.15)
+    parser.add_argument('--margin', type=float, default=0.0)
     parser.add_argument('--no-align', action='store_true')
     parser.add_argument('--val-fraction', type=float, default=0.15)
     parser.add_argument('--test-fraction', type=float, default=0.2)

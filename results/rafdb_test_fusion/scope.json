@@ -1,0 +1,10 @@
+{
+  "dataset": "E:\\emotion-age-gender\\emotion_realtime\\data\\rafdb_prepared_m0\\manifest.jsonl",
+  "split": "test",
+  "models": {
+    "efficientnet": "5034df867c74972e648ec01107d52f40cc41177070ec2f96a35d9ccc09369787"
+  },
+  "limitation": "Initial model training data is unknown; held out from the new fine-tune only.",
+  "detector": "MediaPipe features were prepared once; evaluation retains all samples, including fallback.",
+  "fusion": "E:\\emotion-age-gender\\emotion_realtime\\models\\efficientnet_fusion.json"
+}

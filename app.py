@@ -80,7 +80,7 @@ def record(results, source):
 
 def run(pipe, frame_bgr):
     """Gọi pipeline đúng hợp đồng, lọc theo ngưỡng, trả (ảnh đã vẽ, kết quả)."""
-    pipe.align, pipe.crop_margin = True, 0.15       # cố định: đúng crop lúc train EfficientNet và fusion
+    pipe.align, pipe.crop_margin = True, 0.0        # cố định: lề 0 khớp ảnh RAF-DB lúc train EfficientNet và fusion
     pipe.fusion_path = str(fusion_file) if use_fusion else None
     pipe.attributes = use_attributes
     pipe.quality_gate = quality_gate

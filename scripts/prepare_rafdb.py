@@ -18,7 +18,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--margin', type=float, default=0.15)
+    parser.add_argument('--margin', type=float, default=0.0)
     parser.add_argument('--val-fraction', type=float, default=0.15)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--resume', action='store_true')

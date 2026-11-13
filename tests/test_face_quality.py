@@ -73,7 +73,7 @@ class FaceQualityTests(unittest.TestCase):
     def test_tilted_face_is_aligned_even_when_alignment_is_off(self):
         tilted = face(roll=20)
         _, _, predict = self.run_pipeline([self.frame], [[tilted]])
-        expected = pipeline.align_crop(self.frame, tilted['box'], 20, 0.15)
+        expected = pipeline.align_crop(self.frame, tilted['box'], 20, 0.0)
         np.testing.assert_array_equal(predict.call_args.args[0], expected)
 
     def test_new_track_id_starts_with_empty_history(self):

@@ -79,15 +79,15 @@ def stage_times(frame):
     from quality import face_quality
     from tracker import FaceTracker
     found = detect_faces(frame)[0]
-    crop = align_crop(frame, found['box'], found['angle'], 0.15)
-    correction = Fusion(FUSION, Path(MODEL_DIR) / 'efficientnet.keras', 0.15, True)
+    crop = align_crop(frame, found['box'], found['angle'], 0.0)
+    correction = Fusion(FUSION, Path(MODEL_DIR) / 'efficientnet.keras', 0.0, True)
     probs = predict(crop)[2]
     tracker = FaceTracker()
     fake = Pipeline(attributes=False)
     fake.process_frame(frame)
     results = fake.process_frame(frame)
     stages = {'phát hiện (MediaPipe)': lambda: detect_faces(frame),
-              'crop căn chỉnh': lambda: align_crop(frame, found['box'], found['angle'], 0.15),
+              'crop căn chỉnh': lambda: align_crop(frame, found['box'], found['angle'], 0.0),
               'tiền xử lý': lambda: prepare_face(crop),
               'tracking': lambda: tracker.update([found['box']]),
               'chất lượng': lambda: face_quality(frame, found['box'], found['angle'], found['yaw']),

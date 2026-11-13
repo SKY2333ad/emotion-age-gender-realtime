@@ -48,16 +48,6 @@ _INFERENCE_CACHE = {}
 _ONNX_CACHE = {}
 
 
-def get_crop_config(model_name=DEFAULT_MODEL):
-    path = os.path.join(MODEL_DIR, f'{model_name}.metadata.json')
-    if os.path.isfile(path):
-        with open(path, encoding='utf-8') as file:
-            config = json.load(file).get('crop_config')
-        if config:
-            return config
-    return {'margin': 0.15, 'align': True}
-
-
 def _get(model_name):
     if model_name not in MODEL_NAMES:
         raise ValueError(f"Model '{model_name}' không tồn tại, chỉ có: {MODEL_NAMES}")

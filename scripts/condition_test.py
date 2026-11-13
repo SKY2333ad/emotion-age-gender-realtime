@@ -56,7 +56,7 @@ def main():
     ap.add_argument("--detector", default="mediapipe", choices=["mediapipe"])
     ap.add_argument("--model", default=None, help="mặc định: checkpoint EfficientNet đang được chọn của dự án")
     ap.add_argument("--no-align", action="store_true", help="tắt căn chỉnh mặt (để so sánh)")
-    ap.add_argument("--crop-margin", type=float, default=0.15)
+    ap.add_argument("--crop-margin", type=float, default=0.0)
     ap.add_argument("--smoothing", choices=["adaptive", "mean"], default="adaptive",
                     help="adaptive giống app; mean là trung bình cũ, chỉ mean mới dùng --smooth-n")
     ap.add_argument("--smooth-n", type=int, default=3)

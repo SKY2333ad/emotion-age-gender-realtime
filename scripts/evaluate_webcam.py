@@ -98,7 +98,7 @@ def main(argv=None):
     parser.add_argument('--manifest', type=Path, required=True)
     parser.add_argument('--model', choices=MODEL_NAMES, default=DEFAULT_MODEL)
     parser.add_argument('--split', choices=['validation', 'test'], default='validation')
-    parser.add_argument('--margins', type=float, nargs='+', default=[0.05, 0.10, 0.15])
+    parser.add_argument('--margins', type=float, nargs='+', default=[0.0, 0.05, 0.10, 0.15])
     parser.add_argument('--no-align', action='store_true')
     parser.add_argument('--fusion', type=Path)
     parser.add_argument('--seed', type=int, default=42)

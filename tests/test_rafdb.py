@@ -111,12 +111,12 @@ class RAFDBTests(unittest.TestCase):
              patch.object(pipeline, "predict", side_effect=[("fear", 1, fear), ("disgust", 1, disgust)]) as predict:
             pipe.process_frame(frame)
             self.assertEqual(predict.call_args.args[1], "efficientnet")
-            self.assertEqual(pipe.get_face_crop(frame, face["box"]).shape, (78, 78, 3))
-            pipe.crop_margin = 0
+            self.assertEqual(pipe.get_face_crop(frame, face["box"]).shape, (60, 60, 3))
+            pipe.crop_margin = 0.15
             result = pipe.process_frame(frame)
             self.assertEqual(result[0]["probs"]["fear"], 0)
             self.assertEqual(result[0]["label"], "disgust")
-            self.assertEqual(pipe.get_face_crop(frame, face["box"]).shape, (60, 60, 3))
+            self.assertEqual(pipe.get_face_crop(frame, face["box"]).shape, (78, 78, 3))
 
     def test_training_smoke_and_output_protection(self):
         from tensorflow import keras
