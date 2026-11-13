@@ -75,7 +75,7 @@ Webcam → luôn lấy khung mới nhất
 | `NEED_ALIGNMENT` | Góc 15–30° | Bắt buộc căn chỉnh rồi dự đoán |
 | `LOW_CONFIDENCE` | Xác suất cao nhất dưới 0,45, hoặc mặt 80–119 px | Dự đoán nhưng ghi "Không chắc chắn" |
 
-Yaw, pitch lấy từ ma trận xoay của MediaPipe, còn roll lấy từ đường nối hai mắt. Ngưỡng độ nét và độ sáng chỉ được kiểm trên RAF-DB train (chặn nhầm 0% và 0,7% ảnh thường), **chưa kiểm trên webcam**. Căn chỉnh 2D chỉ sửa được roll, không sửa được yaw hay pitch. `Pipeline(quality_gate=False)` là mặc định cho script đánh giá, để kết quả cũ không đổi.
+Yaw, pitch lấy từ ma trận xoay của MediaPipe, còn roll lấy từ đường nối hai mắt. Các ngưỡng là giá trị ban đầu, **chưa hiệu chỉnh trên webcam**. Căn chỉnh 2D chỉ sửa được roll, không sửa được yaw hay pitch. `Pipeline(quality_gate=False)` là mặc định cho script đánh giá, để kết quả cũ không đổi.
 
 Thiếu model tuổi/giới tính thì cảm xúc vẫn chạy. Thiếu hoặc sai file ONNX thì app tự dùng Keras, chậm hơn nhưng cùng kết quả.
 
@@ -148,9 +148,9 @@ Máy đo: Intel i5-10210U, 16 GB RAM, chỉ CPU. Chọn cấu hình chỉ trên 
 
 UTKFace test, 18.780 ảnh, CI 95% bootstrap theo ảnh: MAE tuổi 10,27 (10,14–10,41), nhóm tuổi 47,4% (46,7–48,1), macro-F1 43,9% (43,2–44,6), giới tính 85,4% (84,8–85,9). Nhãn không phải tự khai và không có ID người. Không đánh giá theo chủng tộc vì không có dữ liệu tự khai hợp lệ.
 
-RAF-DB test, 3.068 ảnh, CI 95% bootstrap theo ảnh của macro-F1: EfficientNet 0,713 (0,689–0,736), HSEmotion 0,563 (0,540–0,584); mức chênh 0,122–0,177, nằm hẳn trên 0 nên giữ EfficientNet làm mặc định. HSEmotion nhận ảnh RAF-DB 100×100 phóng lên 224×224, khác ảnh AffectNet nó được train. Dữ liệu train ban đầu của `efficientnet.keras` chưa rõ, nhưng trên validation tách từ RAF-DB train nó đạt 89,3% so với 79,8% trên test (`results/rafdb_validation/`), tức gần như chắc đã thấy ảnh train. Vì vậy chỉ số test mới đáng tin.
+RAF-DB test, 3.068 ảnh: EfficientNet hơn HSEmotion khoảng 9 điểm accuracy và 0,15 macro-F1 (`results/rafdb_test/`), nên giữ EfficientNet làm mặc định. HSEmotion nhận ảnh RAF-DB 100×100 phóng lên 224×224, khác ảnh AffectNet nó được train. Dữ liệu train ban đầu của `efficientnet.keras` chưa rõ, nhưng trên validation tách từ RAF-DB train nó đạt 89,3% so với 79,8% trên test (`results/rafdb_validation/`), tức gần như chắc đã thấy ảnh train. Vì vậy chỉ số test mới đáng tin.
 
-**Lề crop 0, không phải 0,15.** Ảnh RAF-DB lúc train được cắt sát mặt. Cũng 2.740 ảnh test, cắt như app với lề 0 đạt 80,6%, lề 0,15 chỉ còn 72,9%; HSEmotion cũng tốt nhất ở lề 0 (70,0% so với 67,9%). Vì vậy app và fusion dùng lề 0; fusion đã train lại trên RAF-DB cắt lề 0 (`prepare_rafdb.py --margin 0`). Kết quả: `results/rafdb_test_fusion/`.
+**Lề crop 0.** Ảnh RAF-DB lúc train được cắt sát mặt, nên app và fusion dùng lề 0 để ảnh lúc chạy giống ảnh lúc train; fusion đã train lại trên RAF-DB cắt lề 0 (`prepare_rafdb.py --margin 0`). Kết quả: `results/rafdb_test_fusion/`.
 
 Đã thử nhưng không có lợi: TTA lật ngang, fit lại ngưỡng nhóm tuổi, fine-tune EfficientNet trên RAF-DB. Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
 
