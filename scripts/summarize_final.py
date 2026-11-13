@@ -1,4 +1,4 @@
-"""Tổng hợp số cuối vào results/final_summary.json: CI trên test UTKFace và confusion matrix FER+ trước/sau.
+"""Tổng hợp số cuối vào results/final_summary.json: CI trên test UTKFace. Số cảm xúc RAF-DB nằm ở results/rafdb_test/.
 
 Chỉ tính lại từ file dự đoán đã có; không chọn tham số nào ở đây.
 python scripts/summarize_final.py
@@ -13,33 +13,17 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
-import keras
-from predict import LABELS
 from scripts.calibrate_age_groups import GROUPS, predict_groups
 from scripts.calibrate_attributes import load
-from scripts.evaluate_ferplus import confusion, pick
-from scripts.train_rafdb import scores_from_confusion
 from ui_helpers import AGE_GROUP_THRESHOLDS
 
-SEED, ROUNDS, TEST_SAMPLE = 42, 1000, 7000
+SEED, ROUNDS = 42, 1000
 
 
 def macro_f1(truth, predicted):
     matrix = np.zeros((6, 6))
     np.add.at(matrix, (truth, predicted), 1)
     return float((2 * np.diag(matrix) / np.maximum(matrix.sum(axis=0) + matrix.sum(axis=1), 1)).mean())
-
-
-def ferplus():
-    data = np.load(ROOT / 'data' / 'ferplus' / 'ferplus.npz')
-    truth = np.array([LABELS.index(label) for label in data['labels']])[pick(data['split'], 'test', TEST_SAMPLE)]
-    head = keras.models.load_model(ROOT / 'results' / 'emotion_head' / 'best_head.keras', compile=False)
-    after = head(np.load(ROOT / 'results' / 'emotion_head' / 'features_test.npy'), training=False).numpy().argmax(axis=1)
-    before = np.load(ROOT / 'results' / 'ferplus' / 'efficientnet.npz')['test'].argmax(axis=1)
-    scores = scores_from_confusion(confusion(truth, after))
-    return {'labels': LABELS, 'efficientnet': confusion(truth, before).tolist(),
-            'efficientnet_ferplus': confusion(truth, after).tolist(), 'efficientnet_ferplus_per_class': scores['per_class'],
-            'efficientnet_ferplus_weighted_f1': sum(value['f1'] * value['support'] for value in scores['per_class'].values()) / len(truth)}
 
 
 def utkface():
@@ -66,7 +50,7 @@ def utkface():
 
 
 def main():
-    report = {'utkface_test': utkface(), 'ferplus_test': ferplus()}
+    report = {'utkface_test': utkface()}
     (ROOT / 'results' / 'final_summary.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(report['utkface_test'], ensure_ascii=True))
 

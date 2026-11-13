@@ -155,52 +155,6 @@
           121.7
         ]
       }
-    },
-    "efficientnet_ferplus": {
-      "1 mặt, chỉ cảm xúc": {
-        "mean_ms": 40.62,
-        "p95_ms": 44.82,
-        "fps_mean": 24.62,
-        "cpu_percent": 221.6,
-        "rss_mb": 502.93,
-        "fps_min": 15.6,
-        "mean_ms_each": [
-          40.6
-        ]
-      },
-      "1 mặt, đầy đủ": {
-        "mean_ms": 43.23,
-        "p95_ms": 47.24,
-        "fps_mean": 23.13,
-        "cpu_percent": 206.9,
-        "rss_mb": 529.68,
-        "fps_min": 19.35,
-        "mean_ms_each": [
-          43.2
-        ]
-      },
-      "3 mặt, chỉ cảm xúc": {
-        "mean_ms": 103.99,
-        "p95_ms": 111.5,
-        "fps_mean": 9.62,
-        "cpu_percent": 201.4,
-        "rss_mb": 530.72,
-        "fps_min": 8.4,
-        "mean_ms_each": [
-          104.0
-        ]
-      },
-      "3 mặt, đầy đủ": {
-        "mean_ms": 110.81,
-        "p95_ms": 124.26,
-        "fps_mean": 9.02,
-        "cpu_percent": 203.5,
-        "rss_mb": 530.79,
-        "fps_min": 6.96,
-        "mean_ms_each": [
-          110.8
-        ]
-      }
     }
   },
   "stages_ms": {

@@ -21,7 +21,7 @@ Mở `http://localhost:8501` nếu trình duyệt không tự mở, rồi vào t
 | `Không mở được webcam` | Đóng ứng dụng khác đang dùng camera, kiểm tra quyền camera của Windows |
 | Muốn cài lại từ đầu | Xóa thư mục `venv`, rồi chạy lại `.\setup.bat` |
 
-Kiểm tra code (67 test, khoảng 30 giây):
+Kiểm tra code (73 test, khoảng 30 giây):
 
 ```powershell
 .\venv\Scripts\python.exe scripts/check_sync.py
@@ -39,7 +39,8 @@ Kiểm tra code (67 test, khoảng 30 giây):
 | Xác suất giới tính | Đã hiệu chuẩn, ECE từ 0,094 xuống 0,009 |
 | Giới tính, UTKFace | Đúng 85,4% |
 | Tuổi, UTKFace | Sai trung bình 10,3 năm, đúng nhóm tuổi 47,4% |
-| Cảm xúc, RAF-DB validation | Accuracy 84,7%, macro-F1 0,819 |
+| Cảm xúc, RAF-DB test (3.068 ảnh) | Accuracy 79,8%, macro-F1 0,713 (EfficientNet, chưa có fusion) |
+| Cảm xúc, RAF-DB validation | Accuracy 84,7%, macro-F1 0,819 (EfficientNet + fusion; lạc quan vì model đã thấy ảnh train) |
 | **Cảm xúc, webcam thật** | **Chưa đo trên bản mới.** Bản cũ, 1 người, quay chính diện: chỉ 34,4% |
 
 **Cần biết trước khi demo:**
@@ -106,7 +107,7 @@ results/            số liệu đo được
 | Nhóm script | File |
 | --- | --- |
 | Thử trên webcam | `condition_test.py`, `run_conditions.py`, `summarize_conditions.py`, `summarize_by_expr.py` |
-| Đánh giá cảm xúc | `evaluate_ferplus.py`, `experiment_emotion_head.py`, `evaluate_rafdb.py`, `evaluate_webcam.py` |
+| Đánh giá cảm xúc | `evaluate_rafdb.py`, `evaluate_webcam.py` |
 | Đánh giá tuổi, giới tính | `evaluate_utkface_attributes.py`, `calibrate_age_groups.py`, `calibrate_attributes.py`, `select_attribute_config.py` |
 | Đo pipeline | `evaluate_tracking.py`, `evaluate_quality.py`, `benchmark_pipeline.py` |
 | ONNX | `export_onnx.py`, `check_onnx.py` |
@@ -117,23 +118,19 @@ results/            số liệu đo được
 
 **1. Thử app với người thật:** một mặt và hai mặt, đổi chỗ, che mặt, đổi biểu cảm, thiếu sáng, quay ngang, chạy 30 phút, rút camera khi đang chạy.
 
-**2. Chọn model mặc định.** Sidebar của app có 3 lựa chọn:
+**2. So model trên webcam.** Sidebar của app có 2 lựa chọn; số dưới là RAF-DB test, 3.068 ảnh (`results/rafdb_test/`):
 
-| Trong sidebar | Tên trong lệnh | Macro-F1 FER+ | Fear / Sad / Disgust |
-| --- | --- | --- | --- |
-| EfficientNet (baseline), mặc định | `efficientnet` | 0,461 | 0,25 / 0,45 / 0,08 |
-| hsemotion (thử nghiệm) | `hsemotion` | 0,496 | 0,24 / 0,56 / 0,25 |
-| EfficientNet — ferplus | `efficientnet_ferplus` | 0,623 | 0,44 / 0,58 / 0,29 |
+| Trong sidebar | Tên trong lệnh | Accuracy | Macro-F1 | Fear / Sad / Disgust (F1) |
+| --- | --- | --- | --- | --- |
+| EfficientNet (baseline), mặc định | `efficientnet` | 79,8% | 0,713 | 0,58 / 0,77 / 0,48 |
+| hsemotion (thử nghiệm) | `hsemotion` | 70,6% | 0,563 | 0,33 / 0,78 / 0,36 |
 
-FER+ là ảnh xám 48×48, không đại diện webcam, nên phải so trực tiếp. Chạy lệnh dưới cho đủ 7 biểu cảm (`surprise fear disgust happy sad angry neutral`), nên từ 3 người trở lên. Lệnh chỉ ghi số liệu, không lưu ảnh:
+RAF-DB không phải webcam, nên vẫn cần so trực tiếp. Chạy lệnh dưới cho đủ 7 biểu cảm (`surprise fear disgust happy sad angry neutral`), nên từ 3 người trở lên. Lệnh chỉ ghi số liệu, không lưu ảnh:
 
 ```powershell
 .\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model efficientnet --fusion models/efficientnet_fusion.json --out results/webcam_baseline.csv
 .\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model hsemotion --out results/webcam_hsemotion.csv
-.\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model efficientnet_ferplus --out results/webcam_ferplus.csv
 ```
-
-**3. RAF-DB test:** chưa chạy lại được vì thiếu dataset. Mọi đánh giá khác không phụ thuộc vào file này.
 
 ## Chi tiết kết quả
 
@@ -151,29 +148,26 @@ Máy đo: Intel i5-10210U, 16 GB RAM, chỉ CPU. Chọn cấu hình chỉ trên 
 
 UTKFace test, 18.780 ảnh, CI 95% bootstrap theo ảnh: MAE tuổi 10,27 (10,14–10,41), nhóm tuổi 47,4% (46,7–48,1), macro-F1 43,9% (43,2–44,6), giới tính 85,4% (84,8–85,9). Nhãn không phải tự khai và không có ID người. Không đánh giá theo chủng tộc vì không có dữ liệu tự khai hợp lệ.
 
-FER+ test, 7.000 ảnh, CI 95% của macro-F1: EfficientNet 0,448–0,474; HSEmotion 0,481–0,512; `efficientnet_ferplus` 0,598–0,650. HSEmotion không làm mặc định vì trên validation CI của mức chênh chứa 0. `efficientnet_ferplus` không làm mặc định vì lớp cuối học trên chính kiểu ảnh FER+.
+RAF-DB test, 3.068 ảnh, CI 95% bootstrap theo ảnh của macro-F1: EfficientNet 0,713 (0,689–0,736), HSEmotion 0,563 (0,540–0,584); mức chênh 0,122–0,177, nằm hẳn trên 0 nên giữ EfficientNet làm mặc định. HSEmotion nhận ảnh RAF-DB 100×100 phóng lên 224×224, khác ảnh AffectNet nó được train. Dữ liệu train ban đầu của `efficientnet.keras` chưa rõ, nhưng trên validation tách từ RAF-DB train nó đạt 89,3% so với 79,8% trên test (`results/rafdb_validation/`), tức gần như chắc đã thấy ảnh train. Vì vậy chỉ số test mới đáng tin.
 
-Đã thử nhưng không có lợi: TTA lật ngang, focal loss, label smoothing, weighted CE, oversample, MixUp, fit lại ngưỡng nhóm tuổi, fine-tune EfficientNet trên RAF-DB. Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
+Đã thử nhưng không có lợi: TTA lật ngang, fit lại ngưỡng nhóm tuổi, fine-tune EfficientNet trên RAF-DB. Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
 
 ## Chạy lại đánh giá
 
-Dataset không kèm trong dự án. Lệnh đầu tải khoảng 1 GB về `data/`.
+Dataset không kèm trong dự án. Cảm xúc dùng RAF-DB: giải nén `RAF-DB.zip` vào `data/rafdb/` sao cho có `data/rafdb/DATASET/train/1..7` và `data/rafdb/DATASET/test/1..7`. Lệnh `prepare_public_data.py` tải UTKFace về `data/`.
 
 ```powershell
-.\venv\Scripts\python.exe scripts/prepare_public_data.py --utkface --ferplus --near-duplicates
+.\venv\Scripts\python.exe scripts/evaluate_rafdb.py --data-dir data/rafdb/DATASET --models efficientnet hsemotion --split test --output results/rafdb_test_rerun
+.\venv\Scripts\python.exe scripts/check_onnx.py
+.\venv\Scripts\python.exe scripts/prepare_public_data.py --utkface
 .\venv\Scripts\python.exe scripts/evaluate_utkface_attributes.py --workers 4 --crop-scale 1.5 --output-dir results/utkface_rerun
 .\venv\Scripts\python.exe scripts/calibrate_attributes.py results/utkface_rerun/predictions.csv --output results/genderage_calibration_rerun.json
 .\venv\Scripts\python.exe scripts/select_attribute_config.py
-.\venv\Scripts\python.exe scripts/evaluate_ferplus.py --limit 3000 --output results/ferplus_rerun
-.\venv\Scripts\python.exe scripts/experiment_emotion_head.py
 .\venv\Scripts\python.exe scripts/evaluate_tracking.py
 .\venv\Scripts\python.exe scripts/evaluate_quality.py
-.\venv\Scripts\python.exe scripts/check_onnx.py
 .\venv\Scripts\python.exe scripts/benchmark_pipeline.py
 .\venv\Scripts\python.exe scripts/summarize_final.py
 ```
-
-Chạy `summarize_final.py` sau cùng vì nó cần đặc trưng do `experiment_emotion_head.py` tạo.
 
 Train lại trên RAF-DB cần dataset riêng: `prepare_rafdb.py` → `train_rafdb.py --manifest ...` → `train_fusion.py --manifest ...` → `evaluate_rafdb.py`. Xuất lại ONNX theo hướng dẫn trong `scripts/export_onnx.py`, rồi chạy `check_onnx.py`.
 
@@ -186,6 +180,6 @@ Chỉ dùng cho nghiên cứu và học tập. Không phân phối dataset hoặ
 | MediaPipe Face Landmarker | Google | |
 | `genderage.onnx` | InsightFace `buffalo_l` | Trọng số chỉ cho nghiên cứu phi thương mại |
 | UTKFace | Bản sao `nu-delta/utkface` | Chỉ nghiên cứu phi thương mại |
-| FER+ | Bản sao `deanngkl/ferplus-7cls` | Chưa đối chiếu ảnh và giấy phép với nguồn gốc |
+| RAF-DB | Bản nhóm có sẵn (`RAF-DB.zip`, 12.271 ảnh train, 3.068 ảnh test) | Chỉ nghiên cứu phi thương mại theo điều khoản của tác giả RAF-DB |
 | HSEmotion | Dự án `face-emotion-recognition`, Apache-2.0 | Huấn luyện trên AffectNet, kiểm tra điều khoản trước khi dùng thương mại |
 | `efficientnet.keras` | Do nhóm bàn giao | Chưa rõ dữ liệu train ban đầu |

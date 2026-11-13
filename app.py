@@ -13,13 +13,11 @@ import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "core"))
 
 import cv2
-import numpy as np
 import pandas as pd
 import streamlit as st
 
 from pipeline import CameraThread, Pipeline
-from predict import DEFAULT_MODEL, EXPERIMENTAL_MODELS, MODEL_NAMES, get_crop_config
-from preprocessing import prepare_face
+from predict import DEFAULT_MODEL, EXPERIMENTAL_MODELS, MODEL_NAMES
 from ui_helpers import LABELS, draw_results, filter_results, result_row
 from ui_helpers import AGE_GROUPS, GENDER_NAMES, age_group, detail_text
 
@@ -42,17 +40,9 @@ with st.sidebar:
     model_label = st.selectbox("Mô hình", list(MODEL_OPTIONS),
                                index=list(MODEL_OPTIONS.values()).index(DEFAULT_MODEL))
     model_name = MODEL_OPTIONS[model_label]
-    trained_crop = get_crop_config(model_name)
-    align_faces = st.toggle("Căn chỉnh khuôn mặt", value=bool(trained_crop['align']), key='align_' + model_name)
-    crop_margin = st.slider("Lề quanh khuôn mặt", 0.0, 0.5, float(trained_crop['margin']), 0.05,
-                            key='margin_' + model_name,
-                            help="So với ảnh lúc train và chọn lề bằng validation.")
-    preview_crop = st.checkbox("Xem ảnh khuôn mặt đưa vào mô hình", value=False)
     use_attributes = st.checkbox('Nhận diện tuổi và giới tính', value=True)
     quality_gate = st.checkbox('Kiểm tra chất lượng đầu vào', value=True,
                                help='Không dự đoán khi mặt nghiêng quá 30°, nhỏ hơn 80 px, quá tối hoặc mờ.')
-    st.caption('Tuổi và giới tính là ước lượng từ hình dáng khuôn mặt, có thể sai, đặc biệt kém với trẻ em. '
-               'Tuổi được hiển thị theo nhóm; giới tính dự đoán không xác định bản dạng giới.')
     fusion_file = Path(__file__).resolve().parent / 'models' / 'efficientnet_fusion.json'
     fusion_config = None
     if fusion_file.exists():
@@ -68,10 +58,6 @@ with st.sidebar:
         st.caption("Chưa có bộ kết hợp được huấn luyện.")
     elif not fusion_compatible:
         st.caption('Bộ kết hợp hiện dùng cho checkpoint: ' + fusion_config['base_model'])
-    if use_fusion:
-        crop_margin = fusion_config['crop_config']['margin']
-        align_faces = fusion_config['crop_config']['align']
-        st.caption(f"Bộ kết hợp dùng lề {crop_margin:.2f}, căn chỉnh {'bật' if align_faces else 'tắt'}.")
 threshold = 0.0                                # không lọc theo ngưỡng tin cậy
 
 
@@ -94,8 +80,7 @@ def record(results, source):
 
 def run(pipe, frame_bgr):
     """Gọi pipeline đúng hợp đồng, lọc theo ngưỡng, trả (ảnh đã vẽ, kết quả)."""
-    pipe.align = align_faces
-    pipe.crop_margin = crop_margin
+    pipe.align, pipe.crop_margin = True, 0.15       # cố định: đúng crop lúc train EfficientNet và fusion
     pipe.fusion_path = str(fusion_file) if use_fusion else None
     pipe.attributes = use_attributes
     pipe.quality_gate = quality_gate
@@ -132,7 +117,7 @@ with tab_live:
         st.session_state.live = True
     if c2.button("■ Dừng"):
         st.session_state.live = False
-    view, status, fps_box, crop_box = st.empty(), st.empty(), st.empty(), st.empty()
+    view, status, fps_box = st.empty(), st.empty(), st.empty()
 
     if st.session_state.get("live", False):
         st.session_state.live_pipe.reset()
@@ -177,14 +162,6 @@ with tab_live:
                         status.warning(st.session_state.live_pipe.attribute_error)
                     else:
                         status.info('Không phát hiện khuôn mặt.')
-                    if preview_crop:
-                        if results:
-                            largest = max(results, key=lambda r: r["box"][2] * r["box"][3])
-                            pipe = st.session_state.live_pipe
-                            crop = prepare_face(pipe.get_face_crop(frame, largest["box"])).astype(np.uint8)
-                            crop_box.image(crop, caption="Ảnh RGB 100×100 đưa vào mô hình (mặt lớn nhất)", width=220)
-                        else:
-                            crop_box.empty()
                     n += 1
                     fps_box.metric("FPS / trễ xử lý", f"{n / max(time.perf_counter() - t0, 1e-6):.1f} / {latency:.0f} ms")
             finally:

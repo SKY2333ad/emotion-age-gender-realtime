@@ -1,4 +1,4 @@
-"""Compare EfficientNet checkpoints on exactly the same held-out RAF-DB images."""
+"""Compare emotion models (EfficientNet checkpoints, HSEmotion) on exactly the same held-out RAF-DB images."""
 import argparse
 import csv
 import json
@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
 import numpy as np
-from predict import LABELS, MODEL_NAMES, MODEL_DIR, _get_inference
+from predict import LABELS, MODEL_NAMES, MODEL_DIR, EXPERIMENTAL_MODELS, HSEMOTION_PATH, _get_inference, hsemotion_batch
 from preprocessing import prepare_face
 from webcam_data import read_image, file_hash, image_hash, check_content_leakage, configure_console, CROP_VERSION
 from fusion import Fusion
@@ -67,7 +67,7 @@ def main(argv=None):
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--data-dir', type=Path)
     source.add_argument('--manifest', type=Path)
-    parser.add_argument('--models', nargs='+', choices=MODEL_NAMES, default=['efficientnet'])
+    parser.add_argument('--models', nargs='+', choices=MODEL_NAMES + EXPERIMENTAL_MODELS, default=['efficientnet'])
     parser.add_argument('--split', choices=['validation', 'test'], default='validation')
     parser.add_argument('--splits-file', type=Path)
     parser.add_argument('--val-fraction', type=float, default=0.15)
@@ -119,15 +119,16 @@ def main(argv=None):
             if (heldout_hashes & set(metadata.get('image_hashes', {}).get('train', [])) or
                     heldout_pixels & set(metadata.get('pixel_hashes', {}).get('train', []))):
                 parser.error(f'Tập đánh giá chứa ảnh đã dùng để fine-tune {name}.')
-        inference = _get_inference(name)
+        inference = None if name == 'hsemotion' else _get_inference(name)
         matrix = np.zeros((7, 7), dtype=np.int64)
         fused_matrix = np.zeros((7, 7), dtype=np.int64)
         use_correction = correction and correction.data['base_model'] == name
         fused_count = 0
         for offset in range(0, len(samples), args.batch_size):
             batch = samples[offset:offset + args.batch_size]
-            images = np.stack([prepare_face(read_image(path)) for path, _ in batch])
-            probabilities = inference(images).numpy()
+            raw = [read_image(path) for path, _ in batch]
+            probabilities = (hsemotion_batch(raw) if inference is None
+                             else inference(np.stack([prepare_face(image) for image in raw])).numpy())
             if (probabilities.shape != (len(batch), 7) or not np.isfinite(probabilities).all() or
                     np.any(probabilities < 0) or not np.allclose(probabilities.sum(axis=1), 1, atol=1e-4)):
                 raise ValueError('Đầu ra checkpoint không phải xác suất 7 lớp.')
@@ -171,7 +172,8 @@ def main(argv=None):
         writer.writerows(comparison)
     (args.output / 'scope.json').write_text(json.dumps({
         'dataset': str((args.manifest or args.data_dir).resolve()), 'split': args.split,
-        'models': {name: file_hash(Path(MODEL_DIR) / f'{name}.keras') for name in args.models},
+        'models': {name: file_hash(HSEMOTION_PATH if name == 'hsemotion' else Path(MODEL_DIR) / f'{name}.keras')
+                   for name in args.models},
         'limitation': 'Initial model training data is unknown; held out from the new fine-tune only.',
         'detector': 'MediaPipe features were prepared once; evaluation retains all samples, including fallback.'
                     if args.manifest else 'Not rerun: RAF-DB images are already cropped/aligned.',
