@@ -49,6 +49,8 @@ with st.sidebar:
                             help="So với ảnh lúc train và chọn lề bằng validation.")
     preview_crop = st.checkbox("Xem ảnh khuôn mặt đưa vào mô hình", value=False)
     use_attributes = st.checkbox('Nhận diện tuổi và giới tính', value=True)
+    quality_gate = st.checkbox('Kiểm tra chất lượng đầu vào', value=True,
+                               help='Không dự đoán khi mặt nghiêng quá 30°, nhỏ hơn 80 px, quá tối hoặc mờ.')
     st.caption('Tuổi và giới tính là ước lượng từ hình dáng khuôn mặt, có thể sai, đặc biệt kém với trẻ em. '
                'Tuổi được hiển thị theo nhóm; giới tính dự đoán không xác định bản dạng giới.')
     fusion_file = Path(__file__).resolve().parent / 'models' / 'efficientnet_fusion.json'
@@ -84,6 +86,8 @@ def record(results, source):
     now = datetime.now().isoformat(timespec="milliseconds")
     rows = st.session_state.rows
     for r in results:
+        if r['label'] is None:                  # khung bị cổng chất lượng chặn, không có dự đoán
+            continue
         rows.append(result_row(r, now, source, detector, model_name))
     del rows[:-MAX_ROWS]
 
@@ -94,6 +98,7 @@ def run(pipe, frame_bgr):
     pipe.crop_margin = crop_margin
     pipe.fusion_path = str(fusion_file) if use_fusion else None
     pipe.attributes = use_attributes
+    pipe.quality_gate = quality_gate
     results = filter_results(pipe.process_frame(frame_bgr, detector, model_name), threshold)
     return draw_results(frame_bgr, results), results
 
@@ -162,7 +167,9 @@ with tab_live:
                         mode = 'EfficientNet + blendshape' if largest_result['fusion_used'] else model_label
                         summary = mode + ' · Top 3: ' + ' · '.join(f'{k}: {v:.0%}' for k, v in largest_result['top3'].items())
                         summary += ' · ' + detail_text(largest_result)
-                        if st.session_state.live_pipe.attribute_error:
+                        if largest_result['label'] is None:
+                            status.warning(detail_text(largest_result))
+                        elif st.session_state.live_pipe.attribute_error:
                             status.warning(summary + ' · ' + st.session_state.live_pipe.attribute_error)
                         else:
                             status.info(summary)

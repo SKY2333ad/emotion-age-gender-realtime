@@ -13,6 +13,7 @@ from predict import MODEL_DIR
 from fusion import Fusion
 from attributes import calibrate_probability, load_calibration, predict_attributes
 from quality import EmotionSmoother, face_quality, weighted_mean, weighted_median
+from quality import BLOCKING, POSE_ALIGN_DEG, input_status, max_pose_angle, output_status
 from tracker import FaceTracker
 from ui_helpers import age_group
 from webcam_data import configure_console
@@ -31,7 +32,7 @@ GENDER_HYSTERESIS = 0.05
 class Pipeline:
     def __init__(self, smooth_n=SMOOTH_N, detect_every=DETECT_EVERY, align=True, crop_margin=0.15,
                  fusion_path=None, attributes=True, attr_every=ATTR_EVERY, attr_history=ATTR_HISTORY,
-                 track_grace=TRACK_GRACE, smoothing='adaptive'):
+                 track_grace=TRACK_GRACE, smoothing='adaptive', quality_gate=False):
         if smooth_n < 1 or detect_every < 1 or not 0 <= crop_margin <= 0.5:
             raise ValueError("smooth_n/detect_every phải >= 1; crop_margin trong [0, 0.5].")
         self.smooth_n, self.detect_every, self.align = smooth_n, detect_every, align
@@ -42,6 +43,7 @@ class Pipeline:
         if smoothing not in ('adaptive', 'mean'):
             raise ValueError("smoothing phải là 'adaptive' hoặc 'mean'.")
         self.smoothing = smoothing
+        self.quality_gate = quality_gate      # bật: trả 'status', chặn mặt kém trước khi gọi model
         self.tracker = FaceTracker(track_grace)
         calibration = load_calibration()
         self.gender_temperature = calibration['gender_temperature']
@@ -154,6 +156,14 @@ class Pipeline:
         for (f, face), key in zip(crops, keys):
             box = f["box"]
             quality = face_quality(frame_bgr, box, f.get('angle', 0.0), f.get('yaw', 0.0))
+            status = input_status(f, quality) if self.quality_gate else None
+            if status in BLOCKING:
+                # Không gọi model, không đưa khung kém vào bộ làm mượt hay lịch sử tuổi/giới tính.
+                out.append({'box': box, 'track_id': key, 'quality': quality['score'], 'status': status,
+                            'label': None, 'prob': 0.0, 'probs': {}, 'raw_probs': {}, 'top3': {},
+                            'fusion_used': False, 'age': None, 'age_range': None, 'gender': None,
+                            'gender_prob': None})
+                continue
             _, _, probs = predict(face, model)
             raw_probs = probs.copy()
             fusion_used = False
@@ -171,12 +181,14 @@ class Pipeline:
                 r["blendshapes"] = f["blendshapes"]
             attrs = self._attributes_for_face(frame_bgr, f, key, quality['score']) if self.attributes else None
             r.update(attrs or {'age': None, 'age_range': None, 'gender': None, 'gender_prob': None})
+            if status:
+                r['status'] = output_status(status, f, r['prob'])
             out.append(r)
         return out
 
     def crop_for_face(self, frame_bgr, face):
-        """Dùng đúng cùng một crop cho dự đoán và ảnh xem trước."""
-        if self.align:
+        """Dùng đúng cùng một crop cho dự đoán và ảnh xem trước; cổng chất lượng bắt buộc căn chỉnh khi góc > 15°."""
+        if self.align or (self.quality_gate and max_pose_angle(face) > POSE_ALIGN_DEG):
             return align_crop(frame_bgr, face["box"], face["angle"], self.crop_margin)
         return crop_face(frame_bgr, face["box"], self.crop_margin)
 

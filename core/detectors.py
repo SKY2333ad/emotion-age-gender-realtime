@@ -33,7 +33,7 @@ def _get_lm():
             _lm = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
                 base_options=mp_python.BaseOptions(model_asset_path=LM_MODEL),
                 running_mode=vision.RunningMode.VIDEO, num_faces=5,
-                output_face_blendshapes=True))
+                output_face_blendshapes=True, output_facial_transformation_matrixes=True))
             _lm_failed = False
         except Exception as exc:
             _lm_failed = True
@@ -60,8 +60,15 @@ def _faces_from_result(res, width, height):
         if res.face_blendshapes and i < len(res.face_blendshapes):
             blendshapes = {c.category_name: float(c.score) for c in res.face_blendshapes[i]
                            if c.category_name != "_neutral"}
+        # Góc đầu (độ) từ ma trận xoay 3D của MediaPipe; roll vẫn lấy từ đường nối hai mắt ở trên.
+        pose = None
+        matrices = getattr(res, "facial_transformation_matrixes", None)
+        if matrices and i < len(matrices):
+            rotation = np.asarray(matrices[i])[:3, :3]
+            pose = {"yaw": float(np.degrees(np.arcsin(np.clip(-rotation[2, 0], -1, 1)))),
+                    "pitch": float(np.degrees(np.arctan2(rotation[2, 1], rotation[2, 2])))}
         out.append({"box": (x0, y0, x1 - x0, y1 - y0), "angle": angle, "yaw": yaw,
-                    "blendshapes": blendshapes})
+                    "blendshapes": blendshapes, "pose": pose})
     return out
 
 
@@ -98,7 +105,7 @@ def detect_image_faces(frame_bgr):
                 os.replace(temporary, LM_MODEL)
             _image_lm = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
                 base_options=mp_python.BaseOptions(model_asset_path=LM_MODEL),
-                running_mode=vision.RunningMode.IMAGE, num_faces=5, output_face_blendshapes=True))
+                running_mode=vision.RunningMode.IMAGE, num_faces=5, output_face_blendshapes=True, output_facial_transformation_matrixes=True))
         result = _image_lm.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
     return _faces_from_result(result, frame_bgr.shape[1], frame_bgr.shape[0])
 

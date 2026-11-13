@@ -30,15 +30,58 @@ def face_quality(frame_bgr, box, angle=0.0, yaw=0.0):
     image_h, image_w = frame_bgr.shape[:2]
     patch = frame_bgr[max(y, 0):min(y + height, image_h), max(x, 0):min(x + width, image_w)]
     if patch.size == 0:
-        return {'score': 0.0, 'size': 0.0, 'sharpness': 0.0, 'lighting': 0.0, 'pose': 0.0}
+        return {'score': 0.0, 'size': 0.0, 'sharpness': 0.0, 'lighting': 0.0, 'pose': 0.0,
+                'brightness_value': 0.0, 'sharpness_value': 0.0}
     gray = cv2.resize(cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY), (96, 96), interpolation=cv2.INTER_AREA)
-    brightness = float(gray.mean())
+    brightness, sharp = float(gray.mean()), sharpness(gray)
     parts = {'size': _ramp(min(width, height), 30, 110),
-             'sharpness': _ramp(sharpness(gray), 0.2, 0.5),
+             'sharpness': _ramp(sharp, 0.2, 0.5),
              'lighting': min(_ramp(brightness, 25, 70), _ramp(255 - brightness, 25, 70)),
              'pose': min(1 - _ramp(abs(angle), 30, 60), 1 - _ramp(yaw, 0.25, 0.7))}
     # Lấy tích: một thành phần rất kém kéo điểm xuống, không bù được bằng thành phần khác.
-    return dict(parts, score=float(np.prod(list(parts.values()))))
+    return dict(parts, score=float(np.prod(list(parts.values()))),
+                brightness_value=brightness, sharpness_value=sharp)
+
+
+# Cổng chất lượng đầu vào (phương án điều kiện thực tế, 13/11/2026). Mặt bị chặn không được đưa vào model.
+# Độ nét/độ sáng kiểm trên RAF-DB train: chặn 0% và 0,7% ảnh thường; độ nét 0,25 ứng với mờ σ≈2 trên mặt 100 px.
+POSE_ALIGN_DEG, POSE_MAX_DEG = 15.0, 30.0
+MIN_FACE_PX, GOOD_FACE_PX = 80, 120
+MIN_BRIGHTNESS = 45.0
+MIN_SHARPNESS = 0.25
+MIN_CONFIDENCE = 0.45
+BLOCKING = ('LARGE_POSE', 'TOO_FAR', 'LOW_LIGHT', 'BLURRY')
+STATUS_TEXT = {'OK': 'Đầu vào tốt', 'NEED_ALIGNMENT': 'Mặt hơi nghiêng, đã căn chỉnh',
+               'LARGE_POSE': 'Góc mặt trên 30°, vui lòng nhìn về camera',
+               'TOO_FAR': 'Mặt quá nhỏ, vui lòng đến gần camera', 'LOW_LIGHT': 'Vui lòng tăng ánh sáng',
+               'BLURRY': 'Giữ khuôn mặt ổn định', 'LOW_CONFIDENCE': 'Không chắc chắn'}
+
+
+def max_pose_angle(face):
+    """max(|yaw|, |pitch|, |roll|) theo độ; thiếu yaw/pitch thì chỉ dùng roll."""
+    pose = face.get('pose') or {}
+    return max(abs(face.get('angle', 0.0)), abs(pose.get('yaw', 0.0)), abs(pose.get('pitch', 0.0)))
+
+
+def input_status(face, quality):
+    """Trạng thái trước khi gọi model, xét theo thứ tự: góc, cỡ mặt, độ sáng, độ nét."""
+    angle = max_pose_angle(face)
+    if angle > POSE_MAX_DEG:
+        return 'LARGE_POSE'
+    if face['box'][2] < MIN_FACE_PX:
+        return 'TOO_FAR'
+    if quality['brightness_value'] < MIN_BRIGHTNESS:
+        return 'LOW_LIGHT'
+    if quality['sharpness_value'] < MIN_SHARPNESS:
+        return 'BLURRY'
+    return 'NEED_ALIGNMENT' if angle > POSE_ALIGN_DEG else 'OK'
+
+
+def output_status(status, face, probability):
+    """Sau khi dự đoán: xác suất thấp hoặc mặt 80–119 px thì đánh dấu không chắc chắn."""
+    if probability < MIN_CONFIDENCE or face['box'][2] < GOOD_FACE_PX:
+        return 'LOW_CONFIDENCE'
+    return status
 
 
 def weighted_median(values, weights):

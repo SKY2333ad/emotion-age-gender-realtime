@@ -57,11 +57,24 @@ Webcam → luôn lấy khung mới nhất
        → MediaPipe tìm mặt
        → Crop vuông, xoay cho thẳng mắt
        → Gán ID, giữ ID 10 khung khi mặt tạm mất
-       → Chấm điểm chất lượng mặt
+       → Chấm điểm chất lượng mặt; mặt kém thì dừng ở đây và báo lý do
        → Cảm xúc: EfficientNet → hiệu chỉnh bằng blendshape → làm mượt
        → Tuổi, giới tính: mỗi 5 khung → hiệu chuẩn → gộp 12 lần gần nhất
        → Vẽ lên màn hình
 ```
+
+**Kiểm tra chất lượng đầu vào** (bật mặc định trong app, tắt ở thanh bên). Mặt bị chặn thì không gọi model, không vào bộ làm mượt và không ghi vào thống kê.
+
+| Trạng thái | Khi nào | Xử lý |
+| --- | --- | --- |
+| `LARGE_POSE` | max(\|yaw\|, \|pitch\|, \|roll\|) > 30° | Không dự đoán, yêu cầu nhìn về camera |
+| `TOO_FAR` | Mặt rộng dưới 80 px | Không dự đoán, yêu cầu đến gần |
+| `LOW_LIGHT` | Độ sáng trung bình vùng mặt dưới 45 | Không dự đoán, yêu cầu tăng sáng |
+| `BLURRY` | Độ nét (Crete) dưới 0,25 | Không dự đoán, yêu cầu giữ yên |
+| `NEED_ALIGNMENT` | Góc 15–30° | Bắt buộc căn chỉnh rồi dự đoán |
+| `LOW_CONFIDENCE` | Xác suất cao nhất dưới 0,45, hoặc mặt 80–119 px | Dự đoán nhưng ghi "Không chắc chắn" |
+
+Yaw, pitch lấy từ ma trận xoay của MediaPipe, còn roll lấy từ đường nối hai mắt. Ngưỡng độ nét và độ sáng chỉ được kiểm trên RAF-DB train (chặn nhầm 0% và 0,7% ảnh thường), **chưa kiểm trên webcam**. Căn chỉnh 2D chỉ sửa được roll, không sửa được yaw hay pitch. `Pipeline(quality_gate=False)` là mặc định cho script đánh giá, để kết quả cũ không đổi.
 
 Thiếu model tuổi/giới tính thì cảm xúc vẫn chạy. Thiếu hoặc sai file ONNX thì app tự dùng Keras, chậm hơn nhưng cùng kết quả.
 

@@ -6,6 +6,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from quality import STATUS_TEXT
+
 LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]   # thứ tự hợp đồng
 AGE_GROUPS = ['0–12', '13–19', '20–29', '30–39', '40–49', '50+']
 # Ngưỡng trên tuổi thô do genderage.onnx trả về, chọn trên validation UTKFace
@@ -62,10 +64,14 @@ def draw_results(frame_bgr, results):
     attribute_lines = []
     for r in results:
         x, y, w, h = [int(v) for v in r["box"]]
-        cv2.rectangle(out, (x, y), (x + w, y + h), (0, 200, 0), 2)
         identity = f'#{r["track_id"]} ' if r.get('track_id') is not None else ''
-        cv2.putText(out, f'{identity}{r["label"]} {r["prob"]:.0%}', (x, max(y - 8, 18)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 0), 2, cv2.LINE_AA)
+        if r.get('label') is None:            # bị cổng chất lượng chặn: chỉ hiện mã trạng thái
+            color, text = (0, 165, 255), f'{identity}{r.get("status", "")}'
+        else:
+            uncertain = '?' if r.get('status') == 'LOW_CONFIDENCE' else ''
+            color, text = (0, 200, 0), f'{identity}{r["label"]}{uncertain} {r["prob"]:.0%}'
+        cv2.rectangle(out, (x, y), (x + w, y + h), color, 2)
+        cv2.putText(out, text, (x, max(y - 8, 18)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2, cv2.LINE_AA)
         if r.get('gender') in GENDER_NAMES and age_group(r.get('age')):
             attribute_lines.append((x, min(max(y + 2, 0), max(out.shape[0] - 24, 0)), attribute_text(r)))
     if attribute_lines:
@@ -81,6 +87,8 @@ def draw_results(frame_bgr, results):
 def detail_text(result):
     """Dòng trạng thái cho một mặt; khoảng tuổi là khoảng thực nghiệm trên UTKFace, không phải khoảng tin cậy cá nhân."""
     parts = [f"Mặt #{result['track_id']}", f"chất lượng {result['quality']:.0%}"]
+    if result.get('status'):
+        parts.append(STATUS_TEXT.get(result['status'], result['status']))
     if result.get('age') is not None:
         parts.append(attribute_text(result))
         if result.get('age_range'):
