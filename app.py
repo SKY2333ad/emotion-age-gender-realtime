@@ -71,19 +71,6 @@ def run(pipe, frame_bgr):
     return draw_results(frame_bgr, results), results
 
 
-def show_results(results):
-    if not results:
-        st.warning("Không phát hiện khuôn mặt, hoặc không có kết quả vượt ngưỡng tin cậy.")
-        return
-    for i, r in enumerate(results, 1):
-        st.write(f"**Khuôn mặt {i}:** {r['label']} - {r['prob']:.1%}")
-        if use_attributes:
-            st.caption(detail_text(r))
-        probs = r.get("probs") or {}
-        if probs:
-            st.bar_chart(pd.Series(probs, name="Xác suất"), height=200)
-
-
 def rgb(img_bgr):
     return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 

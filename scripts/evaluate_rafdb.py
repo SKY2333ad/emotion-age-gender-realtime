@@ -11,9 +11,66 @@ sys.path.insert(0, str(ROOT / 'core'))
 import numpy as np
 from predict import LABELS, MODEL_NAMES, MODEL_DIR, _get_inference
 from preprocessing import prepare_face
-from webcam_data import read_image, file_hash, image_hash, check_content_leakage, configure_console
+from webcam_data import (read_image, file_hash, image_hash, check_content_leakage, configure_console,
+                         load_manifest, split_manifest)
 from scripts.train_rafdb import load_samples, split_validation, check_splits, scores_from_confusion
-from scripts.evaluate_webcam import write_reports, select_splits
+
+
+def select_splits(manifest, model_path, val_fraction=0.15, test_fraction=0.2, seed=42):
+    rows = load_manifest(manifest)
+    metadata_path = Path(model_path).with_suffix('.metadata.json')
+    metadata = json.loads(metadata_path.read_text(encoding='utf-8')) if metadata_path.exists() else None
+    if metadata and metadata['sha256'] != file_hash(model_path):
+        raise ValueError('Metadata không khớp checkpoint EfficientNet.')
+    if metadata and metadata.get('subjects'):
+        groups = metadata['subjects']
+        known = set().union(*(set(values) for values in groups.values()))
+        if {str(row['subject']) for row in rows} != known:
+            raise ValueError('Manifest phải chứa đúng các subject đã chia lúc fine-tune. Dùng bộ dữ liệu mới độc lập để đánh giá riêng.')
+        splits = {name: [row for row in rows if str(row['subject']) in set(subjects)]
+                  for name, subjects in groups.items()}
+    else:
+        splits = split_manifest(rows, val_fraction, test_fraction, seed)
+    # Also catch copies with changed names/subject IDs.
+    check_content_leakage({name: [(row['path'], LABELS.index(row['label'])) for row in values]
+                           for name, values in splits.items()})
+    if metadata:
+        used = set(metadata.get('image_hashes', {}).get('train', []))
+        used_pixels = set(metadata.get('pixel_hashes', {}).get('train', []))
+        for name in ('validation', 'test'):
+            if any(file_hash(row['path']) in used or (used_pixels and image_hash(row['path']) in used_pixels)
+                   for row in splits[name]):
+                raise ValueError('Tập đánh giá chứa ảnh EfficientNet đã fine-tune.')
+    return splits
+
+
+def write_reports(directory, results, details):
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=False)
+    (directory / 'report.json').write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
+    records = [{'config': config, 'label': label, **values}
+               for config, metrics in results.items() for label, values in metrics['per_class'].items()]
+    for filename, rows in [('metrics_per_class.csv', records), ('predictions.csv', details)]:
+        with (directory / filename).open('w', encoding='utf-8-sig', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    for config, metrics in results.items():
+        matrix = np.array(metrics['confusion_matrix'])
+        fig, axis = plt.subplots(figsize=(7, 6))
+        axis.imshow(matrix / np.maximum(matrix.sum(axis=1, keepdims=True), 1), vmin=0, vmax=1, cmap='Blues')
+        axis.set(xticks=range(len(LABELS)), yticks=range(len(LABELS)), xticklabels=LABELS, yticklabels=LABELS,
+                 xlabel='Predicted', ylabel='True', title=config)
+        plt.setp(axis.get_xticklabels(), rotation=45, ha='right')
+        for i in range(len(LABELS)):
+            for j in range(len(LABELS)):
+                axis.text(j, i, str(matrix[i, j]), ha='center', va='center')
+        fig.tight_layout()
+        fig.savefig(directory / f'confusion_{config}.png', dpi=150)
+        plt.close(fig)
 
 
 def read_split_file(path):

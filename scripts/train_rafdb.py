@@ -3,8 +3,8 @@
 python scripts/train_rafdb.py --data-dir D:/datasets/RAF-DB --dry-run
 python scripts/train_rafdb.py --data-dir D:/datasets/RAF-DB --epochs 15
 
-Hỗ trợ bản gốc (list_patition_label.txt + Image/aligned) hoặc thư mục
-train/<tên lớp hoặc 1..7>/*.jpg, val/... (tùy chọn), test/... (tùy chọn).
+Thư mục dữ liệu: train/<cảm xúc>/*.jpg, val/... (tùy chọn), test/... (tùy chọn),
+với <cảm xúc> là một nhãn trong models/labels.txt (surprise, happy, sad, angry, neutral).
 """
 import argparse
 import csv
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "core"))
 from preprocessing import prepare_face
 from webcam_data import (load_manifest, split_manifest, check_content_leakage, file_hash, image_hash,
-                         configure_console, RAF_LABELS)
+                         configure_console)
 from selection import qualifies
 
 LABELS = (ROOT / "models" / "labels.txt").read_text(encoding="utf-8").split()
@@ -33,62 +33,29 @@ def folder_samples(directory):
         if not folder.is_dir():
             continue
         name = folder.name.lower()
-        if name.isdigit() and 1 <= int(name) <= 7:
-            name = RAF_LABELS[int(name) - 1]
-        name = {"anger": "angry", "happiness": "happy", "sadness": "sad"}.get(name, name)
         images = sorted(p for p in folder.rglob("*") if p.suffix.lower() in IMAGE_EXTENSIONS)
         if images and name not in LABELS:
-            raise ValueError(f"Thư mục lớp không hợp lệ: {folder}")
+            raise ValueError(f"Thư mục lớp phải mang tên một cảm xúc {LABELS}: {folder}")
         samples.extend((p.resolve(), LABELS.index(name)) for p in images)
     return samples
 
 
-def load_samples(data_dir, labels_file=None, images_dir=None):
+def load_samples(data_dir):
     """Giữ nguyên tập test chính thức; không đưa ảnh test vào train/validation."""
     if not data_dir.is_dir():
         raise ValueError(f"Không tìm thấy thư mục dữ liệu: {data_dir}")
-    if labels_file is None and (data_dir / "train").is_dir():
-        train = folder_samples(data_dir / "train")
-        val_dirs = [data_dir / n for n in ("val", "validation") if (data_dir / n).is_dir()]
-        if len(val_dirs) > 1:
-            raise ValueError("Chỉ giữ một thư mục val hoặc validation để tránh chọn nhầm dữ liệu.")
-        val = folder_samples(val_dirs[0]) if val_dirs else []
-        if val_dirs and not val:
-            raise ValueError(f"Thư mục validation không có ảnh: {val_dirs[0]}")
-        test = folder_samples(data_dir / "test") if (data_dir / "test").is_dir() else []
-        return train, val, test
-
-    if labels_file is None:
-        candidates = sorted({*data_dir.rglob("list_patition_label.txt"),
-                             *data_dir.rglob("list_partition_label.txt")})
-        if len(candidates) != 1:
-            raise ValueError("Cần đúng một file nhãn RAF-DB; chỉ rõ bằng --labels-file.")
-        labels_file = candidates[0]
-    if images_dir is None:
-        candidates = sorted(p for p in data_dir.rglob("aligned") if p.is_dir())
-        if len(candidates) != 1:
-            raise ValueError("Cần thư mục ảnh aligned; chỉ rõ bằng --images-dir.")
-        images_dir = candidates[0]
-    splits = {"train": [], "test": []}
-    seen = set()
-    for line in labels_file.read_text(encoding="utf-8-sig").splitlines():
-        if not line.strip():
-            continue
-        filename, raw_label = line.split()
-        label = int(raw_label)
-        if not 1 <= label <= 7:
-            raise ValueError(f"Nhãn RAF-DB không hợp lệ: {line}")
-        image = Path(filename)
-        aligned_name = image.stem if image.stem.endswith("_aligned") else image.stem + "_aligned"
-        path = (images_dir / (aligned_name + image.suffix)).resolve()
-        if not path.is_file():
-            raise ValueError(f"Thiếu ảnh đã căn chỉnh: {path}")
-        split = "train" if image.name.startswith("train_") else "test" if image.name.startswith("test_") else None
-        if split is None or path in seen:
-            raise ValueError(f"Tên ảnh không hợp lệ hoặc bị trùng: {filename}")
-        seen.add(path)
-        splits[split].append((path, LABELS.index(RAF_LABELS[label - 1])))
-    return splits["train"], [], splits["test"]
+    if not (data_dir / "train").is_dir():
+        raise ValueError(f"Thiếu thư mục train/<cảm xúc> trong {data_dir}")
+    train = folder_samples(data_dir / "train")
+    val_dirs = [data_dir / n for n in ("val", "validation") if (data_dir / n).is_dir()]
+    if len(val_dirs) > 1:
+        raise ValueError("Chỉ giữ một thư mục val hoặc validation để tránh chọn nhầm dữ liệu.")
+    val = folder_samples(val_dirs[0]) if val_dirs else []
+    if val_dirs and not val:
+        raise ValueError(f"Thư mục validation không có ảnh: {val_dirs[0]}")
+    test = folder_samples(data_dir / "test") if (data_dir / "test").is_dir() else []
+    return train, val, test
+    
 
 
 def split_validation(samples, fraction, seed, group_key=None):
@@ -202,8 +169,6 @@ def main(argv=None):
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--data-dir", type=Path)
     source.add_argument("--manifest", type=Path, help="Webcam JSONL: chia độc lập theo người.")
-    parser.add_argument("--labels-file", type=Path)
-    parser.add_argument("--images-dir", type=Path)
     parser.add_argument("--initial-model", type=Path, default=ROOT / "models" / "efficientnet.keras")
     parser.add_argument("--output", type=Path, default=ROOT / "models" / "efficientnet_rafdb.keras")
     parser.add_argument("--report-dir", type=Path, help="Thư mục mới để lưu báo cáo; mặc định results/training/<thời_gian>.")
@@ -226,7 +191,7 @@ def main(argv=None):
         parser.error("val-fraction phải trong (0,1); epochs/batch-size/unfreeze-layers/patience phải >= 1.")
     if not np.isfinite(args.learning_rate) or args.learning_rate <= 0:
         parser.error("learning-rate phải là số hữu hạn > 0.")
-    if not LABELS or len(set(LABELS)) != len(LABELS) or not set(LABELS) <= set(RAF_LABELS):
+    if not LABELS or len(set(LABELS)) != len(LABELS) or not set(LABELS) <= {"surprise", "happy", "sad", "angry", "neutral"}:
         parser.error("models/labels.txt phải là các nhãn RAF-DB không trùng.")
     try:
         manifest_rows = None
@@ -245,7 +210,7 @@ def main(argv=None):
             train, val, test = [[(r["path"], LABELS.index(r["label"])) for r in subject_splits[name]]
                                 for name in ("train", "validation", "test")]
         else:
-            train, val, test = load_samples(args.data_dir, args.labels_file, args.images_dir)
+            train, val, test = load_samples(args.data_dir)
             if not val:
                 train, val = split_validation(train, args.val_fraction, args.seed, image_hash)
         splits = {"train": train, "validation": val, "test": test}

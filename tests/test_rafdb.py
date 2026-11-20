@@ -59,37 +59,20 @@ class RAFDBTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             training.check_splits({"train": train, "validation": train})
 
-    def test_official_label_mapping_and_test_isolation(self):
+    def test_folder_names_must_be_emotions(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            aligned = root / "Image" / "aligned"
-            aligned.mkdir(parents=True)
-            labels_file = root / "list_patition_label.txt"
-            lines = []
-            for prefix in ("train", "test"):
-                for label in (1, 4, 5, 6, 7):
-                    name = f"{prefix}_{label:05d}"
-                    (aligned / f"{name}_aligned.jpg").touch()
-                    lines.append(f"{name}.jpg {label}")
-            labels_file.write_text("\n".join(lines), encoding="utf-8")
-            train, val, test = training.load_samples(root)
-            self.assertFalse(val)
-            self.assertEqual([label for _, label in train], list(range(len(training.LABELS))))
-            self.assertEqual(len(test), len(training.LABELS))
-            self.assertTrue(all(p.name.startswith("test_") for p, _ in test))
-            labels_file.write_text("train_00001.jpg 0", encoding="utf-8")
-            with self.assertRaises(ValueError):
-                training.load_samples(root)
-
-    def test_numeric_folders_map_to_contract_labels(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            for label in (1, 4, 5, 6, 7):
-                directory = root / "train" / str(label)
+            for label in training.LABELS:
+                directory = root / "train" / label
                 directory.mkdir(parents=True)
                 (directory / "face.jpg").touch()
-            train, _, _ = training.load_samples(root)
-            self.assertEqual([label for _, label in train], list(range(len(training.LABELS))))
+            train, val, test = training.load_samples(root)
+            self.assertEqual(sorted(label for _, label in train), list(range(len(training.LABELS))))
+            self.assertFalse(val or test)
+            (root / "train" / "4").mkdir()
+            (root / "train" / "4" / "face.jpg").touch()
+            with self.assertRaises(ValueError):
+                training.load_samples(root)
 
     def test_macro_f1_includes_missed_classes(self):
         cm = np.zeros((len(training.LABELS), len(training.LABELS)), dtype=int)

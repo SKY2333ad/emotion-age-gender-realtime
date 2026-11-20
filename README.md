@@ -1,43 +1,42 @@
 # Phân tích khuôn mặt thời gian thực
 
-App webcam nhận diện **5 cảm xúc** (ngạc nhiên, vui, buồn, tức giận, bình thản), **giới tính ước lượng** và **theo dõi ID** từng khuôn mặt. Chạy cục bộ trên CPU, không gửi ảnh ra ngoài. Đồ án của nhóm Vinh, Tiến, Toàn.
+App webcam nhận diện **5 cảm xúc** (ngạc nhiên, vui, buồn, tức giận, bình thản), **giới tính ước lượng** và **theo dõi ID** từng khuôn mặt. Chạy cục bộ trên CPU, không gửi ảnh ra ngoài. Kèm website **Photo Booth** chụp ảnh với filter theo cảm xúc. Đồ án Nhóm 1: Vinh, Tiến, Toàn, Quân.
 
-## Chạy app
+## Chạy
 
-**Cần:** Windows, [Python 3.12 hoặc 3.13](https://www.python.org/downloads/) 64-bit (có `py`), webcam, Internet lần đầu, khoảng 3 GB trống.
+**Cần:** Windows 10/11, [Python 3.12 hoặc 3.13](https://www.python.org/downloads/) 64-bit, webcam, Chrome/Edge, Internet lần đầu, khoảng 4 GB trống.
 
-Mở PowerShell tại thư mục dự án:
+Nhấp đúp `run.bat` rồi chọn:
 
-```powershell
-.\setup.bat      # chỉ chạy lần đầu, cài vào venv, mất khoảng 10–15 phút
-.\run_app.bat    # mở app
-```
+| Phím | Việc |
+| --- | --- |
+| 1 | Web Photo Booth, mở `http://127.0.0.1:4173` |
+| 2 | Photo Booth qua Internet bằng ngrok (máy cần có ngrok và authtoken; thiếu thì vẫn chạy local) |
+| 3 | App nhận diện realtime (Streamlit), mở `http://localhost:8501`, vào tab **Live** bấm **Bắt đầu** |
+| 4 | Dừng server Photo Booth |
 
-Mở `http://localhost:8501` nếu trình duyệt không tự mở, rồi vào tab **Live** và bấm **Bắt đầu**.
+Lần đầu `run.bat` tự tìm Python (không có thì cài Python 3.13 bằng winget), tạo `venv`, cài `requirements.txt` (10–20 phút) rồi chạy `check_sync.py`. Các lần sau chạy ngay. Có thể gọi thẳng `run.bat booth`, `run.bat public`, `run.bat app`, `run.bat stop`.
 
 | Gặp lỗi | Cách xử lý |
 | --- | --- |
-| `KHONG tao duoc moi truong` | Cài Python 3.12 hoặc 3.13. Python 3.14 trở lên chưa dùng được với TensorFlow |
+| `Can Python 3.12 hoac 3.13` | Cài Python 3.12 hoặc 3.13. Python 3.14 trở lên chưa dùng được với TensorFlow |
 | `Không mở được webcam` | Đóng ứng dụng khác đang dùng camera, kiểm tra quyền camera của Windows |
-| Muốn cài lại từ đầu | Xóa thư mục `venv`, rồi chạy lại `.\setup.bat` |
+| Server Photo Booth không lên | Xem `.runtime\server-error.log` |
+| Muốn cài lại từ đầu | Xóa thư mục `venv`, rồi chạy lại `run.bat` |
 
-Kiểm tra code (62 test):
+Kiểm tra code (56 test Python, 18 test web):
 
 ```powershell
 .\venv\Scripts\python.exe scripts/check_sync.py
 .\venv\Scripts\python.exe -m unittest discover -s tests
+cd sites\ai-smart-photo-booth; npm test
 ```
 
-## Web AI Smart Photo Booth
+## Web Photo Booth
 
-Website chụp 3 ảnh theo chủ đề (Ngầu, Sinh nhật, Kinh dị, Giáng sinh), dùng cùng pipeline cảm xúc, giới tính và cổng chất lượng ở trên qua API `/api/analyze`. Trình duyệt chạy thêm MediaPipe FaceLandmarker để lấy blendshape, gộp với xác suất EfficientNet (0,65 / 0,35). Filter khuôn mặt vẽ bằng Canvas bám theo 478 điểm mốc, chạy sẵn không cần cài thêm: mỗi cảm xúc có một filter cho nam và một filter cho nữ (10 filter, `dist/ar/filters/expressionMatrix.js`); chủ đề chỉ đổi không khí nền (mũ tiệc, tuyết, dơi...). Giới tính chưa đủ chắc (dưới 0,75) thì chỉ hiện viền màu theo cảm xúc. Filter nâng cao DeepAR (chủ đề Ngầu) và thay nền phía sau là tùy chọn, cần License Key DeepAR: mở `http://localhost:4173/#setup` để nhập key một lần, key chỉ lưu trong `localStorage` của trình duyệt. Chưa có key thì giao diện không hiện hai mục này.
+Website chụp 3 ảnh theo chủ đề (Ngầu, Sinh nhật, Kinh dị, Giáng sinh), dùng cùng pipeline cảm xúc, giới tính và cổng chất lượng ở trên qua API `/api/analyze`. Trình duyệt chạy thêm MediaPipe FaceLandmarker để vẽ filter bám mặt; cảm xúc lấy từ xác suất EfficientNet, làm mượt rồi mới đổi filter. Filter khuôn mặt vẽ bằng Canvas bám theo 478 điểm mốc, chạy sẵn không cần cài thêm: mỗi cảm xúc có một filter cho nam và một filter cho nữ (10 filter, `dist/ar/filters/expressionMatrix.js`); chủ đề chỉ đổi không khí nền (mũ tiệc, tuyết, dơi...). Giới tính chưa đủ chắc (dưới 0,75) thì chỉ hiện viền màu theo cảm xúc. Không muốn dùng nhận diện cảm xúc thì bấm chọn một trong 10 filter (có hình xem trước) ở mục **Filter** bên phải màn hình chụp: web ngừng gửi ảnh lên `/api/analyze`, chỉ còn bám mặt trong trình duyệt để vẽ filter; chọn lại "Tự động" thì nhận diện tiếp. Không cần License Key hay tài khoản dịch vụ nào; không đóng gói authtoken ngrok vào dự án.
 
-```powershell
-.\run_photo_booth.bat           # mở http://127.0.0.1:4173, dùng chung venv với app Streamlit
-.\STOP_AI_PHOTO_BOOTH.bat       # dừng server
-```
-
-`START_PUBLIC_PHOTO_BOOTH.bat` mở thêm đường hầm ngrok ra Internet nếu máy đã cài ngrok và có authtoken. Server chỉ nghe `127.0.0.1` và không ghi ảnh xuống đĩa. Mã nguồn web nằm trong `sites/ai-smart-photo-booth/`; test phía web chạy bằng `npm test` trong thư mục đó.
+Server chỉ nghe `127.0.0.1` và không ghi ảnh xuống đĩa. Mã nguồn web nằm trong `sites/ai-smart-photo-booth/` (chi tiết trong README của thư mục đó).
 
 ## Tình trạng hiện tại
 
@@ -95,12 +94,15 @@ Yaw, pitch lấy từ ma trận xoay của MediaPipe, còn roll lấy từ đư�
 Bắt đầu từ `app.py`, rồi `core/pipeline.py`.
 
 ```text
+run.bat             menu chạy (gọi scripts/run.ps1)
 app.py              giao diện Streamlit
 core/               phần lõi app dùng
 models/             model và tham số hiệu chuẩn
+sites/ai-smart-photo-booth/   website Photo Booth (server.py + dist/)
 scripts/            train, đánh giá, đo tốc độ; app không gọi
 tests/              test tự động
 results/            số liệu đo được
+data/               dataset, không kèm dự án
 ```
 
 | File trong `core/` | Việc |
@@ -116,28 +118,14 @@ results/            số liệu đo được
 
 | Nhóm script | File |
 | --- | --- |
-| Thử trên webcam | `condition_test.py`, `run_conditions.py`, `summarize_conditions.py`, `summarize_by_expr.py` |
-| Đánh giá cảm xúc | `evaluate_rafdb.py`, `evaluate_webcam.py` |
+| Train và đánh giá cảm xúc | `train_rafdb.py`, `prepare_rafdb.py`, `evaluate_rafdb.py` |
 | Đánh giá giới tính | `evaluate_utkface_attributes.py`, `calibrate_attributes.py` |
 | Đo pipeline | `evaluate_tracking.py`, `evaluate_quality.py`, `benchmark_pipeline.py` |
-| Train RAF-DB | `prepare_rafdb.py`, `prepare_webcam.py`, `train_rafdb.py` |
-| Khác | `prepare_public_data.py`, `summarize_final.py`, `check_sync.py` |
+| Khác | `prepare_public_data.py`, `summarize_final.py`, `check_sync.py`, `run.ps1` |
 
 ## Việc còn lại của nhóm
 
-**1. Thử app với người thật:** một mặt và hai mặt, đổi chỗ, che mặt, đổi biểu cảm, thiếu sáng, quay ngang, chạy 30 phút, rút camera khi đang chạy.
-
-**2. Đo model trên webcam.** Số dưới là RAF-DB test, 2.834 ảnh (`results/rafdb_test/`):
-
-| Trong sidebar | Tên trong lệnh | Accuracy | Macro-F1 | Sad / Angry (F1) |
-| --- | --- | --- | --- | --- |
-| EfficientNet (baseline), mặc định | `efficientnet` | 84,8% | 0,819 | 0,82 / 0,75 |
-
-RAF-DB không phải webcam, nên vẫn cần so trực tiếp. Chạy lệnh dưới cho đủ 5 biểu cảm (`surprise happy sad angry neutral`), nên từ 3 người trở lên. Lệnh chỉ ghi số liệu, không lưu ảnh:
-
-```powershell
-.\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model efficientnet --out results/webcam_baseline.csv
-```
+**Thử với người thật trên webcam:** một mặt và hai mặt, đổi chỗ, che mặt, đổi 5 biểu cảm, thiếu sáng, quay ngang, chạy 30 phút, rút camera khi đang chạy. Toàn bộ số đo cảm xúc hiện có là trên ảnh RAF-DB (test 2.834 ảnh: accuracy 84,8%, macro-F1 0,819; F1 sad 0,82, angry 0,75 — `results/rafdb_test/`).
 
 ## Chi tiết kết quả
 
@@ -160,7 +148,7 @@ Model được fine-tune từ checkpoint nhóm bàn giao, vốn chưa rõ dữ l
 
 ## Chạy lại đánh giá
 
-Dataset không kèm trong dự án. Cảm xúc dùng RAF-DB: giải nén `RAF-DB.zip` vào `data/rafdb/` sao cho có `data/rafdb/DATASET/train/<số lớp>` và `data/rafdb/DATASET/test/<số lớp>`. Chỉ giữ 5 thư mục 1 (surprise), 4 (happy), 5 (sad), 6 (angry), 7 (neutral); script báo lỗi nếu còn thư mục 2 hoặc 3. Lệnh `prepare_public_data.py` tải UTKFace về `data/`.
+Dataset không kèm trong dự án. Cảm xúc dùng RAF-DB: đặt ảnh theo dạng `data/rafdb/DATASET/train/<cảm xúc>/` và `data/rafdb/DATASET/test/<cảm xúc>/`, với `<cảm xúc>` là `surprise`, `happy`, `sad`, `angry`, `neutral`. Bản RAF-DB gốc đánh số thư mục 1–7: đổi 1→surprise, 4→happy, 5→sad, 6→angry, 7→neutral và bỏ 2 (fear), 3 (disgust); thư mục có tên khác thì script báo lỗi. Lệnh `prepare_public_data.py` tải UTKFace về `data/`.
 
 ```powershell
 .\venv\Scripts\python.exe scripts/evaluate_rafdb.py --data-dir data/rafdb/DATASET --models efficientnet --split test --output results/rafdb_test_rerun
@@ -185,5 +173,4 @@ Chỉ dùng cho nghiên cứu và học tập. Không phân phối dataset hoặ
 | `genderage.onnx` | InsightFace `buffalo_l` | Trọng số chỉ cho nghiên cứu phi thương mại |
 | UTKFace | Bản sao `nu-delta/utkface` | Chỉ nghiên cứu phi thương mại |
 | RAF-DB | Bản nhóm có sẵn (`RAF-DB.zip`); dùng 11.273 ảnh train, 2.834 ảnh test của 5 lớp | Chỉ nghiên cứu phi thương mại theo điều khoản của tác giả RAF-DB |
-| DeepAR SDK và các filter `.deepar` | DeepAR (tải SDK từ jsDelivr lúc chạy) | Cần License Key theo domain; watermark tùy gói license |
 | `efficientnet.keras` | Fine-tune 5 lớp từ checkpoint nhóm bàn giao | Chưa rõ dữ liệu train của checkpoint ban đầu |

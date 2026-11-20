@@ -1,8 +1,8 @@
-import { FaceTracker } from "./ar/faceTracker.js";
-import { chooseFilter, isUsableProfile } from "./ar/filterPolicy.js";
+import { FaceTracker } from "./ar/faceTracker.js?v=20261120-2";
+import { chooseFilter, isUsableProfile, manualProfile } from "./ar/filterPolicy.js?v=20261120-3";
+import { GENDER_FILTERS } from "./ar/filters/expressionMatrix.js";
 import { FilterRenderer } from "./ar/filterRenderer.js";
-import { createFusionState, updateExpressionFusion } from "./ar/expressionFusion.js";
-import { DeepARAdapter, resolveCoolDeepAREffect, DEEPAR_LICENSE_STORAGE_KEY } from "./ar/deepARAdapter.js?v=20261119-6";
+import { createFusionState, updateExpressionFusion } from "./ar/expressionFusion.js?v=20261120-2";
 import { getFrameLayout } from "./frameLayouts.js";
 import { AmbientEffects } from "./ar/ambientEffects.js?v=20261119-2";
 
@@ -18,25 +18,23 @@ const EMOTIONS={angry:"Tức giận",happy:"Vui",neutral:"Bình thản",sad:"Bu�
 const FILTER_EXPRESSIONS=["happy","surprise","neutral","sad","angry"];
 const GENDERS={male:"Nam",female:"Nữ"};
 const EMPTY={detected:false,hasFace:false,emotion:null,probability:0,ready:false,gender:null,genderProbability:0,status:null,quality:{light:0,sharp:0,size:0,angle:0},message:"Hãy bật camera"};
-const app={screen:"welcome",selectedTheme:"cool",effectTheme:"cool",userChoice:null,shotIndex:0,shots:[],frameBackground:{color:null,dataUrl:null,image:null},virtualBackground:{url:null,name:"Nền thật",objectUrl:null},cameraStream:null,analysisRunId:0,analysisBusy:false,aiState:{...EMPTY},apiOnline:false,arTracker:null,lastFace:null,fusionState:createFusionState(),fusionResult:null,modelToken:0,deepAR:null,deepArEnabled:false,deepArBusy:false,deepArSwitchError:null};
+const app={screen:"welcome",filterChoice:"",selectedTheme:"cool",effectTheme:"cool",userChoice:null,shotIndex:0,shots:[],frameBackground:{color:null,dataUrl:null,image:null},cameraStream:null,analysisRunId:0,analysisBusy:false,aiState:{...EMPTY},apiOnline:false,arTracker:null,lastFace:null,fusionState:createFusionState(),fusionResult:null,modelToken:0};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], wait=ms=>new Promise(r=>setTimeout(r,ms));
 const ambientEffects=new AmbientEffects($("#ambientCanvas"));
-const labelEmotion=e=>EMOTIONS[e]||"Đang nhận diện";
+const labelEmotion=e=>EMOTIONS[e]||"";
 
 function suggestPackage(face=app.aiState){
   const theme=app.userChoice&&THEME_IDS.includes(app.userChoice)?app.userChoice:"cool";
-  return {theme,reason:"Chọn chủ đề; AI sẽ phối hiệu ứng theo biểu cảm khi camera bật"};
+  return {theme,reason:"Filter sẽ đổi theo nét mặt của bạn khi chụp"};
 }
 
 function applyFilter(theme){
   const stage=$("#cameraStage"); if(!stage)return;
   stage.className=`camera-stage ${theme.filterClass}`;
-  if(app.deepArEnabled)stage.classList.add("deepar-active");
 }
 
 function applyTheme(key,reason=""){
   if(!THEMES[key])return;
-  if(key!=="cool"&&app.deepArEnabled)void app.deepAR?.clearFaceEffect().catch(console.error);
   app.selectedTheme=key;app.effectTheme=key; const t=THEMES[key]; applyFilter(t);
   ambientEffects.setTheme(key);
   $("#recommendCard").className=`recommend-card ${t.className}`;
@@ -44,7 +42,7 @@ function applyTheme(key,reason=""){
   $("#recommendReason").textContent=reason||suggestPackage().reason; $("#previewCaption").textContent=t.caption;
   $("#challengePreview").innerHTML=FILTER_EXPRESSIONS.map(expression=>`<span>${labelEmotion(expression)}</span>`).join("");
   $("#framePreview").style.boxShadow=`0 18px 40px ${t.color}35`;
-  renderThemeGrid();updateDeepArUi();applyFrameBackground();if(app.screen==="capture")renderCapture();
+  renderThemeGrid();applyFrameBackground();if(app.screen==="capture")renderCapture();
 }
 
 function renderThemeGrid(){
@@ -63,142 +61,25 @@ function goTo(screen){
   if(screen==="results")renderResults(); window.scrollTo({top:0,behavior:"smooth"});
 }
 
+function manualFilterName(){const [gender,expression]=app.filterChoice.split(":");return GENDER_FILTERS[gender]?.[expression]?.name||"";}
+
 function renderArFrame(face,time){
   app.lastFace=face;
-  const fused=updateExpressionFusion(app.fusionState,{
-    probs:app.aiState.probs||{},modelLabel:app.aiState.modelEmotion,modelToken:app.modelToken,blendshapes:face?.blendshapes||{}
-  },time);
+  if(app.filterChoice){
+    const profile=manualProfile(app.filterChoice,face,app.selectedTheme);
+    if(profile.ready!==app.aiState.ready){app.aiState={...EMPTY,...profile,message:profile.ready?"Đang dùng filter tự chọn":"Không thấy khuôn mặt"};renderQuality();}
+    app.filterRenderer?.setSelection(chooseFilter(profile),time);
+    app.filterRenderer?.draw(face,time,profile.detected);
+    $("#faceGuide").style.opacity=face?"0":"1";
+    return;
+  }
+  const fused=updateExpressionFusion(app.fusionState,{probs:app.aiState.probs||{},modelToken:app.modelToken},time);
   app.fusionState=fused.state;app.fusionResult=fused.result;app.aiState.expression=fused.result.label;app.aiState.emotion=fused.result.label;app.aiState.fusedProbability=fused.result.score;
   const profile={...app.aiState,themeId:app.selectedTheme,expression:fused.result.label};
   const visible=isUsableProfile(profile);
-  if(app.deepArEnabled&&visible&&profile.themeId==="cool")syncDeepArProfile(profile);
-  // Filter Canvas có sẵn, không cần key; nhường chỗ khi DeepAR đang vẽ filter mặt ở chủ đề Ngầu.
   app.filterRenderer?.setSelection(chooseFilter(profile),time);
-  app.filterRenderer?.draw(face,time,visible&&!(app.deepArEnabled&&profile.themeId==="cool"));
+  app.filterRenderer?.draw(face,time,visible);
   $("#faceGuide").style.opacity=face&&visible?"0":"1";
-}
-
-function updateDeepArUi(message=""){
-  const button=$("#deepArToggleBtn"),status=$("#deepArStatus");
-  if(!button||!status)return;
-  const setup=location.hash==="#setup";
-  $("#advancedTools").hidden=!(setup||storedDeepArKey());
-  $("#deepArKeyBtn").hidden=!setup;
-  button.disabled=app.deepArBusy||app.selectedTheme!=="cool";
-  button.classList.toggle("active",app.deepArEnabled);
-  button.textContent=app.deepArBusy?"Đang tải...":app.deepArEnabled?"Tắt filter nâng cao":"Bật filter nâng cao";
-  status.classList.toggle("ready",app.deepArEnabled);
-  status.textContent=message||(app.deepArEnabled?(app.virtualBackground.url?`Đang dùng nền: ${app.virtualBackground.name}`:"Filter nâng cao đang bật"):"Thêm kính, mũ, mặt nạ cho chủ đề Ngầu");
-}
-
-function storedDeepArKey(){
-  try{return localStorage.getItem(DEEPAR_LICENSE_STORAGE_KEY)||"";}catch{return "";}
-}
-
-function saveDeepArKey(licenseKey){
-  try{localStorage.setItem(DEEPAR_LICENSE_STORAGE_KEY,licenseKey);return localStorage.getItem(DEEPAR_LICENSE_STORAGE_KEY)===licenseKey;}catch{return false;}
-}
-
-function manageDeepArKey(){
-  const hasKey=Boolean(storedDeepArKey());
-  const next=window.prompt(hasKey?"License Key đã được lưu. Dán key mới để thay đổi, hoặc để trống rồi bấm OK để xóa key đã lưu:":"Dán DeepAR SDK License Key để lưu lâu dài trong trình duyệt này:","");
-  if(next===null)return;
-  const value=next.trim();
-  if(!value){try{localStorage.removeItem(DEEPAR_LICENSE_STORAGE_KEY);}catch{}disableDeepAR();updateDeepArUi("Đã xóa License Key khỏi trình duyệt");toast("Đã xóa DeepAR License Key.");return;}
-  if(saveDeepArKey(value)){updateDeepArUi("Đã lưu License Key lâu dài trên trình duyệt này");toast("Đã lưu DeepAR License Key.");}
-  else toast("Trình duyệt đang chặn lưu key. Hãy bật quyền lưu dữ liệu trang web.");
-}
-
-function syncDeepArProfile(profile){
-  const effect=resolveCoolDeepAREffect(profile);
-  if(!effect||!app.deepArEnabled||app.deepArBusy||app.deepArSwitchError===effect.key)return;
-  if(app.deepAR?.activeEffect?.key===effect.key||app.deepAR?.requestedEffect?.key===effect.key)return;
-  updateDeepArUi(`Đang đổi filter: ${effect.name}...`);
-  void app.deepAR.setProfile(profile).then(changed=>{
-    if(changed){
-      app.deepArSwitchError=null;
-      const active=app.deepAR.activeEffect||effect;
-      updateDeepArUi(`Filter: ${active.name}`);
-    }
-  }).catch(error=>{
-    app.deepArSwitchError=effect.key;
-    console.error("DeepAR effect switch failed",error);
-    updateDeepArUi(`Không đổi được filter ${effect.name}`);
-    setTimeout(()=>{if(app.deepArSwitchError===effect.key)app.deepArSwitchError=null;},1800);
-  });
-}
-
-function disableDeepAR(){
-  app.deepAR?.pause();
-  app.deepArEnabled=false;
-  app.deepArSwitchError=null;
-  $("#cameraStage")?.classList.remove("deepar-active");
-  updateDeepArUi();
-}
-
-async function enableDeepAR({askForKey=true}={}){
-  if(!app.cameraStream){toast("Hãy bật camera trước.");return false;}
-  if(app.deepArBusy)return false;
-  let licenseKey=storedDeepArKey();
-  if(!licenseKey&&askForKey){
-    licenseKey=window.prompt("Dán DeepAR SDK License Key. Key chỉ được lưu trong trình duyệt này:","")?.trim()||"";
-    if(licenseKey&&!saveDeepArKey(licenseKey))toast("Không lưu được key vì trình duyệt đang chặn dữ liệu trang web.");
-  }
-  if(!licenseKey){updateDeepArUi("Chưa cài License Key cho filter nâng cao");return false;}
-  app.deepArBusy=true;updateDeepArUi("Đang tải filter nâng cao...");
-  try{
-    app.deepAR ||= new DeepARAdapter($("#cameraVideo"),$("#deepArCanvas"));
-    await app.deepAR.enable(licenseKey);
-    app.deepArEnabled=true;
-    app.deepArSwitchError=null;
-    applyFilter(THEMES[app.selectedTheme]);
-    if(app.selectedTheme==="cool"){
-      const profile={...app.aiState,themeId:"cool",expression:app.fusionResult?.label||"neutral"};
-      syncDeepArProfile(profile);
-    }else await app.deepAR.clearFaceEffect();
-    if(app.virtualBackground.url)await app.deepAR.setBackground(app.virtualBackground.url);
-    toast(app.virtualBackground.url?"Đã bật nền phía sau.":"Đã bật filter nâng cao.");
-    return true;
-  }catch(error){
-    console.error("DeepAR init failed",error);
-    app.deepArEnabled=false;
-    $("#cameraStage")?.classList.remove("deepar-active");
-    updateDeepArUi("Chưa tải được, bấm lại để thử");
-    toast("Không bật được filter nâng cao. Hãy thử lại.");
-    return false;
-  }finally{app.deepArBusy=false;updateDeepArUi($("#deepArStatus")?.textContent||"");}
-}
-
-async function toggleDeepAR(){
-  if(app.deepArEnabled){disableDeepAR();toast("Đã tắt filter nâng cao.");return;}
-  await enableDeepAR();
-}
-
-function updateVirtualBackgroundUi(){
-  $$('[data-camera-background]').forEach(button=>{const active=(button.dataset.cameraBackground||"")===(app.virtualBackground.objectUrl?"__custom__":app.virtualBackground.url||"");button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
-  const feedback=$("#cameraBgFeedback");if(feedback)feedback.textContent=app.virtualBackground.url?`Đang dùng nền phía sau: ${app.virtualBackground.name}.`:"Đang giữ nguyên căn phòng phía sau.";
-}
-
-async function setVirtualBackground(url,name="Nền tùy chọn",objectUrl=null){
-  if(!url){
-    await app.deepAR?.clearBackground();
-    if(app.virtualBackground.objectUrl)URL.revokeObjectURL(app.virtualBackground.objectUrl);
-    app.virtualBackground={url:null,name:"Nền thật",objectUrl:null};updateVirtualBackgroundUi();updateDeepArUi();toast("Đã dùng lại nền thật.");return;
-  }
-  if(!app.cameraStream){toast("Hãy bật camera trước khi chọn nền phía sau.");return;}
-  const ready=app.deepArEnabled||await enableDeepAR();if(!ready){if(objectUrl)URL.revokeObjectURL(objectUrl);return;}
-  try{
-    await app.deepAR.setBackground(url);
-    if(app.virtualBackground.objectUrl&&app.virtualBackground.objectUrl!==objectUrl)URL.revokeObjectURL(app.virtualBackground.objectUrl);
-    app.virtualBackground={url,name,objectUrl};updateVirtualBackgroundUi();updateDeepArUi();toast(`Đã thay nền phía sau: ${name}.`);
-  }catch(error){if(objectUrl)URL.revokeObjectURL(objectUrl);console.error("DeepAR background replacement failed",error);toast("Không thay được nền này. Hãy thử ảnh khác.");}
-}
-
-async function setUploadedVirtualBackground(file){
-  if(!file)return;
-  if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>8*1024*1024){$("#cameraBgFeedback").textContent="Chỉ nhận PNG/JPG/WebP tối đa 8 MB.";return;}
-  const objectUrl=URL.createObjectURL(file);await setVirtualBackground(objectUrl,file.name,objectUrl);
-  $("#cameraBgUpload").value="";
 }
 
 async function resetServerSession(){
@@ -211,9 +92,8 @@ async function startArTracking(){
     await app.arTracker.init();
     app.filterRenderer ||= new FilterRenderer($("#arCanvas"));
     app.arTracker.start(renderArFrame);
-    if(app.selectedTheme==="cool"&&storedDeepArKey())void enableDeepAR({askForKey:false});
   }catch(error){
-    console.error(error);toast("Không tải được bộ nhận diện khuôn mặt. Hãy tải lại trang.");
+    console.error(error);toast("Không tải được filter. Hãy tải lại trang.");
   }
 }
 
@@ -226,53 +106,77 @@ function renderCapture(){
 }
 
 function renderQuality(){
-  const s=app.aiState,q=s.quality||EMPTY.quality;
-  const items=[["Ánh sáng",q.light,q.light>.5?"Tốt":"Cần sáng hơn"],["Độ nét",q.sharp,q.sharp>.5?"Rõ":"Giữ ổn định"],["Kích thước",q.size,s.hasFace?"Đã thấy mặt":"Không thấy mặt"],["Góc mặt",q.angle,q.angle>.5?"Chính diện":"Nhìn thẳng hơn"]];
-  $("#qualityList").innerHTML=items.map(([name,value,label])=>`<div class="quality-item ${value>.5?"":"warn"}"><i>${value>.5?"✓":"!"}</i><div><b>${name}</b><small>${label}</small></div></div>`).join("");
+  const s=app.aiState;
   const m=$("#qualityMessage"),title=document.createElement("b"),detail=document.createElement("span");
-  m.className=`quality-message ${s.ready?"good":"bad"}`;title.textContent=s.ready?"✓ Sẵn sàng chụp":"! Chưa thể chụp";detail.textContent=s.ready?labelEmotion(s.expression||s.emotion):(s.message||"Đang chờ kết quả AI");m.replaceChildren(title,detail);
+  m.className=`quality-message ${s.ready?"good":"bad"}`;title.textContent=s.ready?"✓ Sẵn sàng chụp":"Chưa chụp được";detail.textContent=s.ready?(app.filterChoice?`Filter: ${manualFilterName()}`:"Bấm Chụp ngay khi bạn thích"):(s.message||"Hãy nhìn vào camera");m.replaceChildren(title,detail);
   $("#faceGuide").style.borderColor=s.ready?"#42d7da":"#ff9b62"; $("#captureNow").disabled=!s.ready||!app.cameraStream;
 }
 
-function updateProfile(){
-  const s=app.aiState,genderReliable=s.genderProbability>=.75;
-  const badge=$("#liveAiBadge"),dot=document.createElement("i"),text=document.createElement("span");badge.className=`live-ai-badge ${s.ready?"ready":""}`;text.textContent=s.hasFace?`${labelEmotion(s.expression||s.emotion)}${genderReliable?` • ${GENDERS[s.gender]}`:""}`:s.message;badge.replaceChildren(dot,text);
-}
-
-async function checkApi(){try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;app.apiOnline=!!(await r.json()).ok;}catch{app.apiOnline=false;toast("Chưa kết nối được máy chủ AI. Hãy chạy lại run_photo_booth.bat.");}updateProfile();}
+async function checkApi(){try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;app.apiOnline=!!(await r.json()).ok;}catch{app.apiOnline=false;toast("Chưa kết nối được máy chủ. Hãy chạy lại run.bat.");}}
 function frameData(){const v=$("#cameraVideo");if(!v.videoWidth)return null;const scale=Math.min(1,480/v.videoWidth),c=document.createElement("canvas");c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);c.getContext("2d").drawImage(v,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.7);}
 
 async function analyzeFrame(runId=app.analysisRunId){
   if(!app.cameraStream||app.analysisBusy)return;const image=frameData();if(!image)return;app.analysisBusy=true;
-  try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"AI không phản hồi");app.apiOnline=true;
+  try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Máy chủ không phản hồi");app.apiOnline=true;
     if(runId!==app.analysisRunId)return;
     app.modelToken+=1;
     if(!d.detected)app.aiState={...EMPTY,probs:d.probs||{},latencyMs:d.latencyMs,modelEmotion:null,message:d.message||"Không tìm thấy khuôn mặt"};
     else app.aiState={...d,modelEmotion:d.emotion,expression:app.fusionResult?.label||"neutral",hasFace:true,quality:d.quality||EMPTY.quality,message:d.message||"Đang phân tích"};
-  }catch(e){app.apiOnline=false;app.aiState={...EMPTY,message:e.message||"Không kết nối được AI"};}
-  finally{app.analysisBusy=false;updateProfile();renderQuality();}
+  }catch(e){app.apiOnline=false;app.aiState={...EMPTY,message:"Mất kết nối, đang thử lại"};}
+  finally{app.analysisBusy=false;renderQuality();}
 }
 async function startAnalysis(){
-  stopAnalysis();const runId=app.analysisRunId;
+  stopAnalysis();if(app.filterChoice)return;const runId=app.analysisRunId;
   while(app.cameraStream&&runId===app.analysisRunId){const started=performance.now();await analyzeFrame(runId);const remaining=250-(performance.now()-started);if(remaining>0)await wait(remaining);}
 }
 function stopAnalysis(){app.analysisRunId+=1;}
+
+// Mặt hoạt hình chỉ có các điểm mốc mà filter dùng (mũi 1, trán 10, đuôi mắt 33/263, gò má 50/280).
+function previewFace(w,h){
+  const u=w*.22,cx=w/2,cy=h*.6,p=(x,y)=>({x:cx+x*u,y:cy+y*u}),landmarks=Array.from({length:478},()=>p(0,0));
+  Object.assign(landmarks,{1:p(0,0),10:p(0,-1.45),33:p(-.5,-.45),263:p(.5,-.45),50:p(-.45,.25),280:p(.45,.25)});
+  return {landmarks,eyeDistance:u,roll:0,yaw:0,pitch:0,width:w,height:h,center:p(0,.2)};
+}
+function drawFilterPreview(canvas,filter,auto=false){
+  const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,face=previewFace(w,h),u=face.eyeDistance,n=face.landmarks[1];
+  ctx.fillStyle="#2a2342";ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#f3c9a6";ctx.beginPath();ctx.ellipse(n.x,n.y-u*.25,u*1.05,u*1.35,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#3b2b25";for(const side of [-1,1]){ctx.beginPath();ctx.arc(n.x+side*u*.42,n.y-u*.45,u*.09,0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle="#3b2b25";ctx.lineWidth=u*.07;ctx.lineCap="round";ctx.beginPath();ctx.arc(n.x,n.y+u*.2,u*.32,.2*Math.PI,.8*Math.PI);ctx.stroke();
+  if(filter)filter.draw(ctx,face,1600);
+  if(auto){ctx.font=`${Math.round(h*.2)}px system-ui`;ctx.textAlign="center";ctx.fillText("😁 😮 😢",w/2,h*.95);}
+}
+function renderFilterChoices(){
+  const options=[["","Tự đổi theo nét mặt",null],...Object.entries(GENDERS).flatMap(([gender,label])=>[[null,label],...FILTER_EXPRESSIONS.map(expression=>[`${gender}:${expression}`,GENDER_FILTERS[gender][expression].name,GENDER_FILTERS[gender][expression]])])];
+  const box=$("#filterChoices");
+  box.innerHTML=options.map(([value,name])=>value===null?`<span class="filter-group-label">${name}</span>`:`<button type="button" class="filter-option ${value?"":"auto"}" data-filter="${value}" aria-pressed="false"><canvas width="192" height="150" aria-hidden="true"></canvas><b>${name}</b></button>`).join("");
+  const filters=options.filter(([value])=>value!==null);
+  box.querySelectorAll(".filter-option").forEach((button,i)=>{drawFilterPreview(button.querySelector("canvas"),filters[i][2],!filters[i][0]);button.addEventListener("click",()=>setFilterChoice(button.dataset.filter));});
+  markFilterChoice();
+}
+function markFilterChoice(){$$("#filterChoices .filter-option").forEach(button=>{const active=button.dataset.filter===app.filterChoice;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});}
+
+// Chọn filter bằng tay thì ngừng gửi ảnh đi nhận diện; chọn lại "Tự động" thì nhận diện tiếp.
+function setFilterChoice(value){
+  app.filterChoice=value;app.aiState={...EMPTY,message:app.cameraStream?"Đang chờ khuôn mặt":EMPTY.message};app.fusionState=createFusionState();app.fusionResult=null;
+  if(value)stopAnalysis();else if(app.cameraStream)void startAnalysis();
+  markFilterChoice();renderQuality();
+}
 function shutdownCamera(resetState=true){
   stopAnalysis();
   app.arTracker?.stop();
   ambientEffects.stop();
-  disableDeepAR();
   if(app.cameraStream)app.cameraStream.getTracks().forEach(t=>t.stop());
   app.cameraStream=null;
   const video=$("#cameraVideo");video.srcObject=null;video.style.display="none";$("#faceGuide").style.opacity="1";
-  $("#mockScene").style.display="block";$("#cameraBtn").textContent="Bật camera thật";$("#cameraStatus").innerHTML="<i></i> Camera đang tắt";
+  $("#mockScene").style.display="block";$("#cameraBtn").textContent="Bật camera";$("#cameraStatus").innerHTML="<i></i> Camera đang tắt";
   if(resetState)app.aiState={...EMPTY};
-  updateProfile();renderQuality();
+  renderQuality();
 }
 
 async function toggleCamera(){
   if(app.cameraStream){shutdownCamera();return;}
-  try{app.cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:"user"},audio:false});const v=$("#cameraVideo");v.srcObject=app.cameraStream;await v.play();v.style.display="block";$("#mockScene").style.display="none";$("#cameraBtn").textContent="Tắt camera";$("#cameraStatus").innerHTML="<i style='background:#42d7da'></i> Camera + AI đang hoạt động";app.fusionState=createFusionState();app.fusionResult=null;app.modelToken=0;ambientEffects.setTheme(app.selectedTheme);ambientEffects.start();await resetServerSession();startAnalysis();startArTracking();}catch{app.cameraStream=null;toast("Không mở được camera. Hãy cho phép trình duyệt sử dụng webcam.");}
+  try{app.cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:"user"},audio:false});const v=$("#cameraVideo");v.srcObject=app.cameraStream;await v.play();v.style.display="block";$("#mockScene").style.display="none";$("#cameraBtn").textContent="Tắt camera";$("#cameraStatus").innerHTML="<i style='background:#42d7da'></i> Camera đang bật";app.fusionState=createFusionState();app.fusionResult=null;app.modelToken=0;ambientEffects.setTheme(app.selectedTheme);ambientEffects.start();await resetServerSession();startAnalysis();startArTracking();}catch{app.cameraStream=null;toast("Không mở được camera. Hãy cho phép trình duyệt sử dụng webcam.");}
 }
 
 function loadImage(src){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=src;});}
@@ -281,19 +185,13 @@ async function captureFrame(){
   const t=THEMES[app.effectTheme||app.selectedTheme],c=document.createElement("canvas"),sourceAspect=v.videoWidth/v.videoHeight;
   c.width=1280;c.height=Math.round(c.width/sourceAspect);
   const x=c.getContext("2d");
-  let deepArImage=null;
-  if(app.deepArEnabled){try{const shot=await app.deepAR?.takeScreenshot();if(shot)deepArImage=await loadImage(shot);}catch(error){console.error("DeepAR capture failed",error);}}
-  if(deepArImage){
-    x.drawImage(deepArImage,0,0,deepArImage.width,deepArImage.height,0,0,c.width,c.height);
-  }else{
-    x.save();x.translate(c.width,0);x.scale(-1,1);x.filter=t.canvasFilter;x.drawImage(v,0,0,v.videoWidth,v.videoHeight,0,0,c.width,c.height);x.restore();x.filter="none";
-  }
+  x.save();x.translate(c.width,0);x.scale(-1,1);x.filter=t.canvasFilter;x.drawImage(v,0,0,v.videoWidth,v.videoHeight,0,0,c.width,c.height);x.restore();x.filter="none";
   const arCanvas=$("#arCanvas");if(arCanvas.width&&arCanvas.height)x.drawImage(arCanvas,0,0,arCanvas.width,arCanvas.height,0,0,c.width,c.height);
   const ambient=$("#ambientCanvas");if(ambient.width&&ambient.height)x.drawImage(ambient,0,0,ambient.width,ambient.height,0,0,c.width,c.height);
   return c.toDataURL("image/png");
 }
 
-async function runCountdown(){const s=app.aiState;if(!s.ready||!app.cameraStream){toast(s.message||"Hãy chờ AI nhận diện khuôn mặt");return;}$("#captureNow").disabled=true;for(const n of [3,2,1]){$("#countdown").textContent=n;await wait(650)}$("#countdown").textContent="";$("#flash").classList.add("fire");const image=await captureFrame();await wait(380);$("#flash").classList.remove("fire");const challenge=THEMES[app.selectedTheme].challenges[app.shotIndex];app.shots.push({image,theme:app.selectedTheme,challenge:{...challenge},ai:{...s},time:new Date()});app.shotIndex++;if(app.shotIndex>=3)goTo("results");else{renderCapture();toast("Đã chụp và giữ filter! Tiếp tục ảnh tiếp theo ✦");}}
+async function runCountdown(){const s=app.aiState;if(!s.ready||!app.cameraStream){toast(s.message||"Hãy nhìn vào camera");return;}$("#captureNow").disabled=true;for(const n of [3,2,1]){$("#countdown").textContent=n;await wait(650)}$("#countdown").textContent="";$("#flash").classList.add("fire");const image=await captureFrame();await wait(380);$("#flash").classList.remove("fire");const challenge=THEMES[app.selectedTheme].challenges[app.shotIndex];app.shots.push({image,theme:app.selectedTheme,challenge:{...challenge},ai:{...s},time:new Date()});app.shotIndex++;if(app.shotIndex>=3)goTo("results");else{renderCapture();toast("Đã chụp và giữ filter! Tiếp tục ảnh tiếp theo ✦");}}
 
 function renderResults(){stopAnalysis();const themeId=app.effectTheme||app.selectedTheme,t=THEMES[themeId],strip=$("#finalStrip");strip.className=`final-strip frame-${themeId}`;strip.dataset.title=t.caption;strip.innerHTML=app.shots.map((s,i)=>`<article class="result-shot"><button class="retake-one" data-retake="${i}" title="Chụp lại ảnh ${i+1}">↻</button><img src="${s.image}" alt="Ảnh Photo Booth ${i+1}"></article>`).join("");applyFrameBackground();$("#summaryTheme").innerHTML=`<span>${t.icon}</span><div><b>${t.name}</b><small>${t.caption}</small></div>`;$$('[data-retake]').forEach(b=>b.addEventListener("click",()=>{app.shotIndex=+b.dataset.retake;app.shots=app.shots.slice(0,app.shotIndex);goTo("capture");}));}
 function drawCover(ctx,img,x,y,w,h){const s=Math.max(w/img.width,h/img.height),sw=w/s,sh=h/s;ctx.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,x,y,w,h);}
@@ -314,7 +212,7 @@ function drawFramedPhoto(ctx,img,photo,layout){
 }
 function drawFrameTitle(ctx,layout){ctx.save();ctx.textAlign="center";ctx.font=`900 ${layout.id==="christmas"?58:48}px Arial, sans-serif`;ctx.fillStyle=layout.accent;ctx.shadowColor="rgba(0,0,0,.25)";ctx.shadowBlur=10;ctx.fillText(layout.title,layout.width/2,layout.height-42);ctx.restore();}
 async function downloadStrip(){if(!app.shots.length){toast("Chưa có ảnh để tải.");return;}const themeId=app.effectTheme||app.selectedTheme,layout=getFrameLayout(themeId),c=document.createElement("canvas");c.width=layout.width;c.height=layout.height;const x=c.getContext("2d"),imgs=await Promise.all(app.shots.map(s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s.image;})));drawFrameBackground(x,layout);layout.photos.forEach((photo,i)=>drawFramedPhoto(x,imgs[i%imgs.length],photo,layout));drawFrameTitle(x,layout);const a=document.createElement("a");a.download=`ai-photo-booth-${themeId}-${Date.now()}.png`;a.href=c.toDataURL("image/png");a.click();}
-function resetSession(){app.shots=[];app.shotIndex=0;app.userChoice=null;app.frameBackground={color:null,dataUrl:null,image:null};void setVirtualBackground(null);app.selectedTheme="cool";app.effectTheme="cool";app.fusionState=createFusionState();app.fusionResult=null;resetServerSession();refreshSuggestion();}
+function resetSession(){app.shots=[];app.shotIndex=0;app.userChoice=null;app.frameBackground={color:null,dataUrl:null,image:null};app.selectedTheme="cool";app.effectTheme="cool";app.fusionState=createFusionState();app.fusionResult=null;resetServerSession();refreshSuggestion();}
 function toast(msg){const e=$("#toast");e.textContent=msg;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2800);}
 function setFrameBackgroundColor(color){app.frameBackground={color,dataUrl:null,image:null};applyFrameBackground();$("#frameBgColor").value=color;$("#frameBgFeedback").textContent="Đã đổi màu nền khung.";}
 async function setFrameBackgroundImage(file){
@@ -325,11 +223,6 @@ async function setFrameBackgroundImage(file){
 }
 $("#startBtn").addEventListener("click",()=>goTo("themes"));$$('[data-go]').forEach(b=>b.addEventListener("click",()=>{if(b.dataset.go==="welcome")resetSession();goTo(b.dataset.go);}));
 $("#randomTheme").addEventListener("click",()=>{let next=app.selectedTheme;while(next===app.selectedTheme)next=THEME_IDS[Math.floor(Math.random()*THEME_IDS.length)];app.userChoice=next;applyTheme(next,"Gợi ý ngẫu nhiên — bạn có thể đổi tiếp");});
-$("#deepArToggleBtn").addEventListener("click",toggleDeepAR);
-$("#deepArKeyBtn").addEventListener("click",manageDeepArKey);
-window.addEventListener("hashchange",()=>updateDeepArUi());
-$$('[data-camera-background]').forEach(button=>button.addEventListener("click",()=>void setVirtualBackground(button.dataset.cameraBackground||null,button.querySelector("b")?.textContent||"Nền có sẵn")));
-$("#cameraBgUpload").addEventListener("change",event=>void setUploadedVirtualBackground(event.target.files?.[0]));
 $$('[data-frame-color]').forEach(button=>button.addEventListener("click",()=>setFrameBackgroundColor(button.dataset.frameColor)));
 $("#frameBgColor").addEventListener("input",event=>setFrameBackgroundColor(event.target.value));
 $("#frameBgUpload").addEventListener("change",event=>void setFrameBackgroundImage(event.target.files?.[0]).catch(()=>{$("#frameBgFeedback").textContent="Không đọc được ảnh nền này.";}));
@@ -337,5 +230,4 @@ $("#resetFrameBg").addEventListener("click",()=>{app.frameBackground={color:null
 $("#useRecommendation").addEventListener("click",()=>{app.shotIndex=0;app.shots=[];goTo("capture");});$("#captureNow").addEventListener("click",runCountdown);$("#cameraBtn").addEventListener("click",toggleCamera);
 $("#themeMode").addEventListener("click",()=>{document.body.classList.toggle("dark");$("#themeMode").textContent=document.body.classList.contains("dark")?"☀":"☾";});$("#retakeAll").addEventListener("click",()=>{app.shotIndex=0;app.shots=[];goTo("capture");});$("#deleteAll").addEventListener("click",()=>{resetSession();goTo("welcome");toast("Đã xóa ảnh trong phiên.");});$("#downloadMock").addEventListener("click",downloadStrip);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&app.screen!=="welcome")goTo("welcome");if((e.key===" "||e.key==="Enter")&&app.screen==="capture"&&!/INPUT|SELECT|BUTTON/.test(e.target.tagName)){e.preventDefault();runCountdown();}});window.addEventListener("beforeunload",()=>{app.arTracker?.stop();app.cameraStream?.getTracks().forEach(t=>t.stop());});
-window.addEventListener("beforeunload",()=>{if(app.virtualBackground.objectUrl)URL.revokeObjectURL(app.virtualBackground.objectUrl);app.deepAR?.shutdown();});
-renderThemeGrid();refreshSuggestion();renderCapture();updateProfile();updateDeepArUi();updateVirtualBackgroundUi();checkApi();
+renderFilterChoices();renderThemeGrid();refreshSuggestion();renderCapture();checkApi();

@@ -33,7 +33,7 @@ def _get_lm():
             _lm = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
                 base_options=mp_python.BaseOptions(model_asset_path=LM_MODEL),
                 running_mode=vision.RunningMode.VIDEO, num_faces=5,
-                output_face_blendshapes=True, output_facial_transformation_matrixes=True))
+                output_facial_transformation_matrixes=True))
             _lm_failed = False
         except Exception as exc:
             _lm_failed = True
@@ -56,10 +56,6 @@ def _faces_from_result(res, width, height):
         # 0 = nhìn thẳng, 1 = mũi lệch ra tới đuôi mắt; đủ dùng để hạ trọng số mặt quay ngang.
         eye_width = xs[right] - xs[left]
         yaw = float(min(abs((xs[NOSE_TIP] - xs[left]) / max(eye_width, 1.0) - 0.5) * 2, 1.0))
-        blendshapes = None
-        if res.face_blendshapes and i < len(res.face_blendshapes):
-            blendshapes = {c.category_name: float(c.score) for c in res.face_blendshapes[i]
-                           if c.category_name != "_neutral"}
         # Góc đầu (độ) từ ma trận xoay 3D của MediaPipe; roll vẫn lấy từ đường nối hai mắt ở trên.
         pose = None
         matrices = getattr(res, "facial_transformation_matrixes", None)
@@ -68,7 +64,7 @@ def _faces_from_result(res, width, height):
             pose = {"yaw": float(np.degrees(np.arcsin(np.clip(-rotation[2, 0], -1, 1)))),
                     "pitch": float(np.degrees(np.arctan2(rotation[2, 1], rotation[2, 2])))}
         out.append({"box": (x0, y0, x1 - x0, y1 - y0), "angle": angle, "yaw": yaw,
-                    "blendshapes": blendshapes, "pose": pose})
+                    "pose": pose})
     return out
 
 
@@ -105,22 +101,9 @@ def detect_image_faces(frame_bgr):
                 os.replace(temporary, LM_MODEL)
             _image_lm = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
                 base_options=mp_python.BaseOptions(model_asset_path=LM_MODEL),
-                running_mode=vision.RunningMode.IMAGE, num_faces=5, output_face_blendshapes=True, output_facial_transformation_matrixes=True))
+                running_mode=vision.RunningMode.IMAGE, num_faces=5, output_facial_transformation_matrixes=True))
         result = _image_lm.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
     return _faces_from_result(result, frame_bgr.shape[1], frame_bgr.shape[0])
-
-
-def detect(frame_bgr, detector="mediapipe"):
-    return [face["box"] for face in detect_faces(frame_bgr, detector)]
-
-
-def detect_scaled(frame_bgr, width=480):
-    """Use the same detector resolution for collection and realtime inference."""
-    height, original_width = frame_bgr.shape[:2]
-    scale = min(1.0, width / original_width)
-    small = cv2.resize(frame_bgr, (int(original_width * scale), int(height * scale))) if scale < 1 else frame_bgr
-    return [dict(face, box=tuple(int(value / scale) for value in face['box']))
-            for face in detect_faces(small)]
 
 
 def align_crop(frame, box, angle, margin=0.15):

@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="AI Smart Photo Booth nhận diện cảm xúc, tuổi và giới tính để gợi ý filter">
-  <title>AI Smart Photo Booth</title>
-  <link rel="stylesheet" href="styles.css?v=20261120">
+  <meta name="description" content="Photo Booth chụp dải 3 ảnh, filter đổi theo nét mặt của bạn">
+  <title>Photo Booth</title>
+  <link rel="stylesheet" href="styles.css?v=20261120-5">
 </head>
 <body>
   <div class="confetti-layer" aria-hidden="true"></div>
@@ -13,7 +13,7 @@
   <header class="topbar">
     <button class="brand" data-go="welcome" aria-label="Về màn hình chào">
       <span class="brand-mark">✦</span>
-      <span><b>AI Smart</b> Photo Booth</span>
+      <span><b>Photo</b> Booth</span>
     </button>
     <div class="stepper" aria-label="Tiến trình">
       <span class="step active" data-step="1"><i>1</i> Chào</span>
@@ -22,7 +22,7 @@
       <span class="step" data-step="4"><i>4</i> Thành phẩm</span>
     </div>
     <div class="top-actions">
-      <span class="local-pill">● Chỉ xử lý trên máy</span>
+      <span class="local-pill">● Ảnh chỉ lưu trên máy</span>
       <button id="themeMode" class="icon-btn" aria-label="Đổi chế độ sáng tối" title="Đổi chế độ sáng tối">☾</button>
     </div>
   </header>
@@ -30,16 +30,16 @@
   <main>
     <section id="welcome" class="screen active-screen welcome-screen" aria-labelledby="welcomeTitle">
       <div class="hero-copy">
-        <span class="eyebrow">PHOTO BOOTH THÔNG MINH</span>
+        <span class="eyebrow">PHOTO BOOTH VUI NHỘN</span>
         <h1 id="welcomeTitle">Ba khoảnh khắc.<br><em>Một phiên bản rất bạn.</em></h1>
-        <p class="hero-lead">Chọn phong cách, làm ba biểu cảm vui và nhận ngay dải ảnh 3 tấm để tải về.</p>
+        <p class="hero-lead">Chọn phong cách, thả ba biểu cảm và nhận ngay dải ảnh 3 tấm để tải về. Filter tự đổi theo nét mặt của bạn.</p>
         <div class="hero-actions">
           <button id="startBtn" class="btn btn-primary btn-xl">Bắt đầu chụp <span>→</span></button>
           <button class="btn btn-ghost" data-go="themes">Xem các chủ đề</button>
         </div>
         <div class="trust-row">
           <div><b>Không tải ảnh lên</b><span>Ảnh chỉ nằm trong bộ nhớ trang</span></div>
-          <div><b>Luôn được tự chọn</b><span>AI chỉ gợi ý, bạn quyết định</span></div>
+          <div><b>Filter theo nét mặt</b><span>Cười, ngạc nhiên… filter đổi theo bạn</span></div>
           <div><b>3 phút vui vẻ</b><span>Chụp, ghép và tải ảnh ngay</span></div>
         </div>
       </div>
@@ -47,7 +47,7 @@
       <div class="hero-visual" aria-label="Xem trước dải ảnh Photo Booth">
         <div class="spark spark-a">✦</div><div class="spark spark-b">●</div><div class="spark spark-c">✦</div>
         <div class="photo-strip tilted">
-          <div class="strip-head"><span>SMART BOOTH</span><small>03 SHOTS</small></div>
+          <div class="strip-head"><span>PHOTO BOOTH</span><small>03 SHOTS</small></div>
           <div class="mini-shot shot-one"><div class="avatar"><span>◕‿◕</span></div><b>CƯỜI TƯƠI!</b></div>
           <div class="mini-shot shot-two"><div class="avatar"><span>⊙△⊙</span></div><b>Ồ WOW!</b></div>
           <div class="mini-shot shot-three"><div class="avatar"><span>•‿•</span></div><b>THẬT NGẦU!</b></div>
@@ -62,9 +62,9 @@
     <section id="themes" class="screen themes-screen" aria-labelledby="themesTitle">
       <div class="section-heading">
         <div>
-          <span class="eyebrow">BƯỚC 2 • GỢI Ý RIÊNG CHO BẠN</span>
+          <span class="eyebrow">BƯỚC 2 • CHỌN PHONG CÁCH</span>
           <h2 id="themesTitle">Chọn “vibe” cho bộ ảnh</h2>
-          <p>Chọn một trong bốn chủ đề. AI sẽ tự phối hiệu ứng trong chủ đề theo biểu cảm khi camera bật.</p>
+          <p>Chọn một trong bốn chủ đề. Khi chụp, filter sẽ tự đổi theo nét mặt của bạn.</p>
         </div>
         <button id="randomTheme" class="btn btn-ghost">↻ Gợi ý khác</button>
       </div>
@@ -109,11 +109,10 @@
         <div class="camera-panel">
           <div class="camera-toolbar">
             <span id="cameraStatus"><i></i> Camera đang tắt</span>
-            <button id="cameraBtn" class="small-btn">Bật camera thật</button>
+            <button id="cameraBtn" class="small-btn">Bật camera</button>
           </div>
           <div id="cameraStage" class="camera-stage">
             <video id="cameraVideo" autoplay muted playsinline></video>
-            <canvas id="deepArCanvas" class="deepar-canvas" aria-label="DeepAR face filter" hidden></canvas>
             <canvas id="ambientCanvas" class="ambient-canvas" aria-hidden="true"></canvas>
             <div class="mock-scene" id="mockScene">
               <div class="scene-glow"></div>
@@ -135,28 +134,12 @@
         </div>
 
         <aside class="studio-side quality-panel">
-          <span class="side-label">KIỂM TRA TRƯỚC KHI CHỤP</span>
-          <div id="qualityList" class="quality-list"></div>
-          <div id="qualityMessage" class="quality-message bad"><b>! Chưa thể chụp</b><span>Đang chờ camera</span></div>
-          <div id="liveAiBadge" class="live-ai-badge"><i></i><span>Đang chờ camera</span></div>
-          <!-- Chỉ hiện khi đã cài License Key DeepAR (cài tại http://localhost:4173/#setup). -->
-          <div id="advancedTools" hidden>
+          <span class="side-label">SẴN SÀNG CHƯA?</span>
+          <div id="qualityMessage" class="quality-message bad"><b>Chưa chụp được</b><span>Hãy bật camera</span></div>
           <hr>
-          <span class="side-label">FILTER NÂNG CAO</span>
-          <button id="deepArToggleBtn" class="btn btn-ghost full deepar-toggle-btn" type="button">Bật filter nâng cao</button>
-          <div id="deepArStatus" class="deepar-status"></div>
-          <button id="deepArKeyBtn" class="text-action" type="button" hidden>Cài đặt License Key</button>
-          <hr>
-          <span class="side-label">NỀN PHÍA SAU NGƯỜI</span>
-          <div class="virtual-bg-grid" aria-label="Chọn nền camera">
-            <button class="virtual-bg-option active" type="button" data-camera-background="" aria-pressed="true"><span class="virtual-bg-none">Ø</span><b>Nền thật</b></button>
-            <button class="virtual-bg-option" type="button" data-camera-background="assets/backgrounds/cool-neon-city.png"><img src="assets/backgrounds/cool-neon-city.png" alt=""><b>Neon</b></button>
-            <button class="virtual-bg-option" type="button" data-camera-background="assets/backgrounds/christmas-room.png"><img src="assets/backgrounds/christmas-room.png" alt=""><b>Giáng sinh</b></button>
-          </div>
-          <label class="btn btn-ghost full virtual-bg-upload" for="cameraBgUpload">Chọn ảnh nền của bạn</label>
-          <input id="cameraBgUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-          <small id="cameraBgFeedback" class="frame-bg-feedback"></small>
-          </div>
+          <span class="side-label">FILTER</span>
+          <div id="filterChoices" class="filter-choices" role="group" aria-label="Chọn filter"></div>
+          <small class="frame-bg-feedback">Chọn "Tự đổi" để filter đổi theo nét mặt, hoặc chọn một filter cố định.</small>
         </aside>
       </div>
 
@@ -198,6 +181,6 @@
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js?v=20261120"></script>
+  <script type="module" src="app.js?v=20261120-5"></script>
 </body>
 </html>

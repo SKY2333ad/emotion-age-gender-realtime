@@ -2,8 +2,5 @@ venv/
 data/
 __pycache__/
 *.pyc
-results/conditions_log.csv
-results/conditions_progress.txt
-results/webcam_baseline.csv
 .venv/
 .runtime/

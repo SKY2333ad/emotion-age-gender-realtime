@@ -1,4 +1,4 @@
-"""Local web server for AI Smart Photo Booth.
+"""Local web server for Photo Booth.
 
 Serves the static interface and exposes POST /api/analyze. Images are processed
 in memory by the project's existing MediaPipe + EfficientNet pipeline and are
@@ -173,7 +173,7 @@ def main() -> None:
     host, port = "127.0.0.1", 4173
     handler = partial(PhotoBoothHandler, directory=str(SITE_DIR / "dist"))
     server = ThreadingHTTPServer((host, port), handler)
-    print(f"AI Smart Photo Booth: http://localhost:{port}")
+    print(f"Photo Booth: http://localhost:{port}")
     print("Images are processed in memory and are not stored by the server.")
     try:
         server.serve_forever()

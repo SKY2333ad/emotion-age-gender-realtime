@@ -6,6 +6,14 @@ export function isUsableProfile(profile) {
   return Boolean(profile?.detected && FILTER_EXPRESSIONS.includes(profile.expression) && !BLOCKING_STATUSES.has(profile.status));
 }
 
+// Người dùng tự chọn filter ("male:happy"...): không cần nhận diện, chỉ cần thấy mặt để vẽ.
+export function manualProfile(choice, face, themeId) {
+  const [gender, expression] = String(choice || "").split(":");
+  if (!["male", "female"].includes(gender) || !FILTER_EXPRESSIONS.includes(expression)) return null;
+  const found = Boolean(face);
+  return { detected: found, hasFace: found, ready: found, status: null, themeId, expression, emotion: expression, gender, genderProbability: 1 };
+}
+
 export function chooseFilter(profile) {
   if (!isUsableProfile(profile)) {
     return { filterIds: [], primaryId: null, hidden: true, variant: "neutral", reason: profile?.message || "Chưa có đầu vào phù hợp" };

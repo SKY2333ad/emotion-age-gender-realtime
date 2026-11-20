@@ -150,8 +150,6 @@ class Pipeline:
             top3 = sorted(avg, key=avg.get, reverse=True)[:3]
             r = {"box": box, 'track_id': key, 'quality': quality['score'], "label": lab, "prob": avg[lab],
                  "probs": avg, 'raw_probs': raw_probs, 'top3': {label: avg[label] for label in top3}}
-            if f["blendshapes"] is not None:
-                r["blendshapes"] = f["blendshapes"]
             attrs = self._attributes_for_face(frame_bgr, f, key, quality['score']) if self.attributes else None
             r.update(attrs or {'gender': None, 'gender_prob': None})
             if status:

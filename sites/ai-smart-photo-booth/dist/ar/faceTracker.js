@@ -31,7 +31,6 @@ export class FaceTracker {
       minFaceDetectionConfidence: 0.5,
       minFacePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
-      outputFaceBlendshapes: true,
       outputFacialTransformationMatrixes: true
     });
   }
@@ -87,12 +86,9 @@ export class FaceTracker {
     const expectedNoseY = eyeMid.y + eyeDistance * 0.47;
     const pitch = clamp((nose.y - expectedNoseY) / eyeDistance * 1.5, -1, 1);
     const matrix = result.facialTransformationMatrixes?.[0]?.data || null;
-    const categories = result.faceBlendshapes?.[0]?.categories || [];
-    const rawBlendshapes = Object.fromEntries(categories.map(category => [category.categoryName, category.score]));
     return {
       landmarks,
       matrix,
-      blendshapes: rawBlendshapes,
       roll,
       yaw,
       pitch,

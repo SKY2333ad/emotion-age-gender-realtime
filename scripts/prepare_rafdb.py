@@ -1,4 +1,4 @@
-"""Prepare square MediaPipe-aligned RAF-DB crops and blendshapes, preserving every test image."""
+"""Prepare square MediaPipe-aligned RAF-DB crops, preserving every test image."""
 import argparse
 import hashlib
 import json
@@ -91,7 +91,7 @@ def main(argv=None):
             row = {'path': crop_path.as_posix(), 'frame_path': str(source), 'source_path': str(source),
                    'source_sha256': signature_data['samples'][index][3], 'label': LABELS[label],
                    'dataset': 'rafdb', 'subject': None, 'split': split, 'split_basis': 'official-rafdb',
-                   'box': box, 'angle': angle, 'blendshapes': face['blendshapes'] if face else None,
+                   'box': box, 'angle': angle,
                    'crop_margin': args.margin, 'align': True, 'crop_version': CROP_VERSION,
                    'landmark_detected': face is not None,
                    'landmarker_sha256': state['landmarker_sha256']}

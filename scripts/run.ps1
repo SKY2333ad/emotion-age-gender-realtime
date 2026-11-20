@@ -1,26 +1,21 @@
 param(
-    [switch]$Public,
+    [ValidateSet("booth", "public", "app", "stop")]
+    [string]$Mode = "booth",
     [switch]$NoBrowser
 )
 
 $ErrorActionPreference = "Continue"
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 Set-Location -LiteralPath $projectRoot
-$venvName = if ($env:PHOTO_BOOTH_VENV) { $env:PHOTO_BOOTH_VENV } else { "venv" }   # dung chung venv cua project
-$venvPath = if ([System.IO.Path]::IsPathRooted($venvName)) {
-    [System.IO.Path]::GetFullPath($venvName)
-} else {
-    [System.IO.Path]::GetFullPath((Join-Path $projectRoot $venvName))
-}
-$venvPython = Join-Path $venvPath "Scripts\python.exe"
-$requirements = Join-Path $projectRoot "requirements-photobooth.txt"
+$venvPython = Join-Path $projectRoot "venv\Scripts\python.exe"
+$requirements = Join-Path $projectRoot "requirements.txt"
 $runtimeDir = Join-Path $projectRoot ".runtime"
 $serverScript = Join-Path $projectRoot "sites\ai-smart-photo-booth\server.py"
 $localUrl = "http://127.0.0.1:4173"
 $healthUrl = "$localUrl/api/health"
 
 function Write-Step([string]$message) {
-    Write-Host "[PhotoBooth] $message" -ForegroundColor Cyan
+    Write-Host "[Nhom1] $message" -ForegroundColor Cyan
 }
 
 function Test-PythonVersion([string]$file, [string[]]$prefixArgs) {
@@ -34,6 +29,7 @@ function Test-PythonVersion([string]$file, [string[]]$prefixArgs) {
 function Find-BootstrapPython {
     $candidates = @(
         @{ File = "py"; Args = @("-3.13") },
+        @{ File = "py"; Args = @("-V:Astral/CPython3.13.2") },
         @{ File = "py"; Args = @("-3.12") },
         @{ File = "python"; Args = @() },
         @{ File = (Join-Path $env:LOCALAPPDATA "Programs\Python\Python313\python.exe"); Args = @() },
@@ -52,10 +48,33 @@ function Install-PythonIfPossible {
     return $LASTEXITCODE -eq 0
 }
 
-function Test-PhotoBoothDependencies {
+function Test-Dependencies {
     if (-not (Test-Path -LiteralPath $venvPython)) { return $false }
-    & $venvPython -c "import cv2, keras, mediapipe, numpy, onnxruntime, PIL, tensorflow" 2>$null
+    & $venvPython -c "import cv2, keras, mediapipe, numpy, onnxruntime, PIL, tensorflow, streamlit, pandas, matplotlib" 2>$null
     return $LASTEXITCODE -eq 0
+}
+
+# Lan dau: tao venv, cai thu vien va kiem tra he thong. Cac lan sau bo qua.
+function Initialize-Environment {
+    if (-not (Test-Path -LiteralPath $venvPython)) {
+        $bootstrap = Find-BootstrapPython
+        if (-not $bootstrap -and (Install-PythonIfPossible)) { $bootstrap = Find-BootstrapPython }
+        if (-not $bootstrap) {
+            throw "Can Python 3.12 hoac 3.13 (64-bit). Python 3.14+ chua dung duoc voi TensorFlow."
+        }
+        Write-Step "Dang tao moi truong venv..."
+        & $bootstrap.File @($bootstrap.Args) -m venv (Join-Path $projectRoot "venv")
+        if ($LASTEXITCODE -ne 0) { throw "Khong tao duoc moi truong ao." }
+    }
+    if (Test-Dependencies) { return }
+    Write-Step "Lan dau chay: dang cai thu vien (can Internet, khoang 10-20 phut)..."
+    & $venvPython -m pip install --upgrade pip
+    if ($LASTEXITCODE -ne 0) { throw "Khong nang cap duoc pip." }
+    & $venvPython -m pip install -r $requirements
+    if ($LASTEXITCODE -ne 0) { throw "Cai thu vien that bai." }
+    if (-not (Test-Dependencies)) { throw "Thu vien da cai nhung kiem tra import khong dat." }
+    & $venvPython (Join-Path $projectRoot "scripts\check_sync.py")
+    if ($LASTEXITCODE -ne 0) { throw "Kiem tra he thong (check_sync.py) khong dat." }
 }
 
 function Wait-ForHealth([int]$seconds = 180) {
@@ -82,15 +101,15 @@ function Start-LocalServer {
     New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
     $stdout = Join-Path $runtimeDir "server.log"
     $stderr = Join-Path $runtimeDir "server-error.log"
-    Write-Step "Dang khoi dong AI server..."
+    Write-Step "Dang khoi dong server..."
     $process = Start-Process -FilePath $venvPython -ArgumentList @($serverScript) -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
     Set-Content -LiteralPath (Join-Path $runtimeDir "server.pid") -Value $process.Id -Encoding ascii
     if (-not (Wait-ForHealth)) {
         Write-Host "Khong khoi dong duoc server. Xem file .runtime\server-error.log" -ForegroundColor Red
         if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Tail 30 }
-        throw "AI server khong san sang."
+        throw "Server khong san sang."
     }
-    Write-Step "AI server da san sang."
+    Write-Step "Server da san sang."
 }
 
 function Find-Ngrok {
@@ -129,42 +148,35 @@ function Start-PublicTunnel {
     return $null
 }
 
+function Stop-Background {
+    foreach ($name in @("server", "ngrok")) {
+        $file = Join-Path $runtimeDir "$name.pid"
+        if (-not (Test-Path -LiteralPath $file)) { continue }
+        $process = Get-Process -Id ([int](Get-Content -LiteralPath $file -Raw)) -ErrorAction SilentlyContinue
+        if ($process) { Stop-Process -Id $process.Id -Force; Write-Step "Da dung $name" }
+        Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+    }
+}
+
 try {
+    if ($Mode -eq "stop") { Stop-Background; exit 0 }
     Write-Step "Chuan bi moi truong chay..."
-    if (-not (Test-Path -LiteralPath $venvPython)) {
-        $bootstrap = Find-BootstrapPython
-        if (-not $bootstrap -and (Install-PythonIfPossible)) { $bootstrap = Find-BootstrapPython }
-        if (-not $bootstrap) {
-            throw "Can Python 3.12 hoac 3.13 (64-bit). Hay cai Python roi chay lai file batch."
-        }
-        Write-Step "Dang tao moi truong ao .venv..."
-        & $bootstrap.File @($bootstrap.Args) -m venv $venvPath
-        if ($LASTEXITCODE -ne 0) { throw "Khong tao duoc moi truong ao." }
+    Initialize-Environment
+    if ($Mode -eq "app") {
+        Write-Step "Mo app Streamlit (dong cua so nay de dung)..."
+        & $venvPython -m streamlit run (Join-Path $projectRoot "app.py")
+        exit $LASTEXITCODE
     }
-
-    if (-not (Test-PhotoBoothDependencies)) {
-        Write-Step "Lan dau chay: dang cai thu vien AI (can Internet, co the mat 10?20 phut)..."
-        & $venvPython -m pip install --upgrade pip
-        if ($LASTEXITCODE -ne 0) { throw "Khong nang cap duoc pip." }
-        & $venvPython -m pip install -r $requirements
-        if ($LASTEXITCODE -ne 0) { throw "Cai thu vien that bai." }
-        if (-not (Test-PhotoBoothDependencies)) { throw "Thu vien da cai nhung kiem tra import khong dat." }
-    }
-
     Start-LocalServer
-    $openUrl = if ($Public) { Start-PublicTunnel } else { $null }
+    $openUrl = if ($Mode -eq "public") { Start-PublicTunnel } else { $null }
     if (-not $openUrl) { $openUrl = $localUrl }
-    if (-not $NoBrowser -and $env:PHOTO_BOOTH_NO_BROWSER -ne "1") {
-        Start-Process $openUrl
-    }
+    if (-not $NoBrowser -and $env:PHOTO_BOOTH_NO_BROWSER -ne "1") { Start-Process $openUrl }
     Write-Host ""
-    Write-Host "AI Smart Photo Booth dang chay: $openUrl" -ForegroundColor Green
-    Write-Host "Co the dong cua so nay. Dung STOP_AI_PHOTO_BOOTH.bat de dung server." -ForegroundColor Gray
+    Write-Host "Photo Booth dang chay: $openUrl" -ForegroundColor Green
+    Write-Host "Co the dong cua so nay. Chon 'Dung Photo Booth' trong run.bat de tat server." -ForegroundColor Gray
     exit 0
 } catch {
     Write-Host ""
     Write-Host "LOI: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Nhan Enter de dong..." -ForegroundColor Gray
-    if ($Host.Name -notlike "*ServerRemoteHost*") { Read-Host | Out-Null }
     exit 1
 }
