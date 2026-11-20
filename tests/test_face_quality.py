@@ -15,7 +15,7 @@ import pipeline
 from quality import face_quality, input_status, output_status
 
 LABELS = pipeline.LABELS
-FEAR = {label: float(label == 'fear') for label in LABELS}
+SAD = {label: float(label == 'sad') for label in LABELS}
 BOX = (40, 40, 140, 140)
 
 
@@ -55,7 +55,7 @@ class FaceQualityTests(unittest.TestCase):
     def run_pipeline(self, frames, faces, **kwargs):
         pipe = pipeline.Pipeline(attributes=False, quality_gate=True, align=False, **kwargs)
         with patch.object(pipeline, 'detect_faces', side_effect=faces), \
-                patch.object(pipeline, 'predict', return_value=('fear', 1.0, FEAR)) as predict:
+                patch.object(pipeline, 'predict', return_value=('sad', 1.0, SAD)) as predict:
             results = [pipe.process_frame(frame) for frame in frames]
         return pipe, results, predict
 
@@ -68,7 +68,7 @@ class FaceQualityTests(unittest.TestCase):
         self.assertIsNone(results[1][0]['label'])
         self.assertEqual(results[1][0]['track_id'], results[0][0]['track_id'])
         state = pipe._smoothers[results[0][0]['track_id']].state
-        np.testing.assert_array_equal(state, [FEAR[label] for label in LABELS])
+        np.testing.assert_array_equal(state, [SAD[label] for label in LABELS])
 
     def test_tilted_face_is_aligned_even_when_alignment_is_off(self):
         tilted = face(roll=20)
@@ -85,10 +85,10 @@ class FaceQualityTests(unittest.TestCase):
     def test_gate_off_keeps_old_result_keys(self):
         pipe = pipeline.Pipeline(attributes=False)
         with patch.object(pipeline, 'detect_faces', return_value=[face(yaw=60)]), \
-                patch.object(pipeline, 'predict', return_value=('fear', 1.0, FEAR)):
+                patch.object(pipeline, 'predict', return_value=('sad', 1.0, SAD)):
             result = pipe.process_frame(self.frame)[0]
         self.assertNotIn('status', result)
-        self.assertEqual(result['label'], 'fear')
+        self.assertEqual(result['label'], 'sad')
 
 
 if __name__ == '__main__':

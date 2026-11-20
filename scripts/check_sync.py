@@ -8,7 +8,7 @@ configure_console()
 
 import numpy as np
 
-CONTRACT_LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+CONTRACT_LABELS = ["surprise", "happy", "sad", "angry", "neutral"]
 CONTRACT_MODELS = ["efficientnet"]
 
 try:

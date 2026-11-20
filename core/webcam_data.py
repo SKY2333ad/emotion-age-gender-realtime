@@ -9,7 +9,10 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS = (ROOT / "models" / "labels.txt").read_text(encoding="utf-8").split()
+# Thứ tự 7 lớp của RAF-DB (thư mục 1..7) và của đầu ra efficientnet.keras.
+RAF_LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
 CROP_VERSION = "square-affine-v1"
+DEFAULT_CROP_MARGIN = 0.0
 
 
 def configure_console():

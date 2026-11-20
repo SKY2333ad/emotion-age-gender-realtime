@@ -1,4 +1,4 @@
-"""Run seven expressions with MediaPipe + EfficientNet across lighting/distance conditions. Enter: record; s: skip; q: stop."""
+"""Run five expressions with MediaPipe + EfficientNet across lighting/distance conditions. Enter: record; s: skip; q: stop."""
 import argparse
 import os
 import subprocess
@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(ROOT, 'core'))
 from predict import MODEL_NAMES, DEFAULT_MODEL
 
 PROGRESS = os.path.join(ROOT, "results", "conditions_progress.txt")
-ALL7 = ["happy", "sad", "angry", "surprise", "fear", "disgust", "neutral"]
+ALL7 = ["happy", "sad", "angry", "surprise", "neutral"]
 KEY3 = ALL7
 DETECTORS = ("mediapipe",)
 

@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
 from detectors import detect_image_faces, align_crop, LM_MODEL
-from webcam_data import LABELS, CROP_VERSION, file_hash, read_image, write_image, check_content_leakage, configure_console
+from webcam_data import (LABELS, CROP_VERSION, file_hash, image_hash, read_image, write_image,
+                         check_content_leakage, configure_console)
 from scripts.train_rafdb import load_samples, split_validation, check_splits
 
 
@@ -29,7 +30,7 @@ def main(argv=None):
         parser.error('output đã tồn tại; dùng --resume để tiếp tục cùng cấu hình.')
     train, validation, test = load_samples(args.data_dir.resolve())
     if not validation:
-        train, validation = split_validation(train, args.val_fraction, args.seed)
+        train, validation = split_validation(train, args.val_fraction, args.seed, image_hash)
     splits = {'train': train, 'validation': validation, 'test': test}
     check_splits(splits)
     check_content_leakage(splits)

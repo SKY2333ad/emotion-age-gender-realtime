@@ -28,9 +28,10 @@ import psutil
 from detectors import detect_image_faces
 from pipeline import Pipeline
 from ui_helpers import draw_results
-from webcam_data import read_image
+from webcam_data import configure_console, read_image
 
-FUSION = args.root / 'models' / 'efficientnet_fusion.json'
+configure_console()
+
 image = read_image(Path(matplotlib.get_data_path()) / 'sample_data' / 'grace_hopper.jpg')
 x, y, width, height = detect_image_faces(image)[0]['box']
 pad = height // 2
@@ -73,14 +74,12 @@ def stage_times(frame):
     """Thời gian từng bước trên một mặt (bản hiện tại), cùng khung với phép đo toàn pipeline."""
     from attributes import predict_attributes
     from detectors import align_crop, detect_faces
-    from fusion import Fusion
-    from predict import MODEL_DIR, predict
+    from predict import predict
     from preprocessing import prepare_face
     from quality import face_quality
     from tracker import FaceTracker
     found = detect_faces(frame)[0]
     crop = align_crop(frame, found['box'], found['angle'], 0.0)
-    correction = Fusion(FUSION, Path(MODEL_DIR) / 'efficientnet.keras', 0.0, True)
     probs = predict(crop)[2]
     tracker = FaceTracker()
     fake = Pipeline(attributes=False)
@@ -92,8 +91,7 @@ def stage_times(frame):
               'tracking': lambda: tracker.update([found['box']]),
               'chất lượng': lambda: face_quality(frame, found['box'], found['angle'], found['yaw']),
               'cảm xúc': lambda: predict(crop),
-              'fusion': lambda: correction.predict(probs, found['blendshapes']),
-              'tuổi và giới tính (1 lần)': lambda: predict_attributes(frame, found['box']),
+              'giới tính (1 lần)': lambda: predict_attributes(frame, found['box']),
               'vẽ khung': lambda: draw_results(frame, results)}
     output = {}
     for name, call in stages.items():
@@ -111,8 +109,7 @@ rows = []
 for count in (1, 3):
     frame = scene(count)
     rows.append(run(f'{count} mặt, chỉ cảm xúc', frame, attributes=False))
-    rows.append(run(f'{count} mặt, đầy đủ', frame, attributes=True,
-                    fusion_path=str(FUSION) if args.model == 'efficientnet' else None))
+    rows.append(run(f'{count} mặt, đầy đủ', frame, attributes=True))
 has_stages = (args.root / 'core' / 'tracker.py').is_file() and args.model == 'efficientnet'
 args.output.parent.mkdir(parents=True, exist_ok=True)
 args.output.write_text(json.dumps({'root': str(args.root), 'model': args.model, 'frame': '640x480',

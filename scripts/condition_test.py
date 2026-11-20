@@ -6,7 +6,7 @@ vào conditions_log.csv (nối thêm vào file cũ).
 
 Ví dụ:
     python condition_test.py --who An --expr happy --light binh_thuong --angle 0 --dist 1
-    python condition_test.py --who An --expr fear  --light thieu_sang  --angle 0 --dist 1 \
+    python condition_test.py --who An --expr sad   --light thieu_sang  --angle 0 --dist 1 \
                              --detector mediapipe
 
 Giá trị gợi ý:
@@ -15,7 +15,7 @@ Giá trị gợi ý:
     --dist   0.5 | 1 | 2 | 3        (mét)
     --occl   none | kinh | khau_trang
     --no-align  tắt căn chỉnh mặt bằng landmark (chỉ có tác dụng với mediapipe; dùng để so sánh có/không căn chỉnh)
-    --expr   surprise fear disgust happy sad angry neutral (biểu cảm người thử được nói trước)
+    --expr   surprise happy sad angry neutral (biểu cảm người thử được nói trước)
 
 Chỉ lưu SỐ LIỆU (không lưu hình). Chỉ quay người đã đồng ý.
 Phím: q = hủy lần ghi này (không ghi gì).
@@ -38,10 +38,10 @@ from pipeline import Pipeline
 import detectors
 from webcam_data import configure_console
 
-LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+LABELS = ["surprise", "happy", "sad", "angry", "neutral"]
 FIELDS = ["time_s", "who", "expr_true", "light", "angle", "dist", "occl", "detector", "model", "align",
           "face_detected", "n_faces", "label_pred", "prob", "correct", "run_id", "crop_margin", "smooth_n",
-          "top3", "raw_probs", "blendshapes", "fusion_used"]
+          "top3", "raw_probs", "blendshapes"]
 
 
 def main():
@@ -60,16 +60,15 @@ def main():
     ap.add_argument("--smoothing", choices=["adaptive", "mean"], default="adaptive",
                     help="adaptive giống app; mean là trung bình cũ, chỉ mean mới dùng --smooth-n")
     ap.add_argument("--smooth-n", type=int, default=3)
-    ap.add_argument("--fusion", help="Đường dẫn bộ kết hợp đã train, nếu có.")
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--countdown", type=float, default=3.0)
     ap.add_argument("--cam", type=int, default=0)
     ap.add_argument("--out", default=os.path.join(_HERE, "conditions_log.csv"))
     a = ap.parse_args()
-    from predict import EXPERIMENTAL_MODELS, MODEL_NAMES
+    from predict import MODEL_NAMES
     from predict import DEFAULT_MODEL
     a.model = a.model or DEFAULT_MODEL
-    if a.model not in MODEL_NAMES + EXPERIMENTAL_MODELS or a.seconds <= 0 or a.countdown < 0:
+    if a.model not in MODEL_NAMES or a.seconds <= 0 or a.countdown < 0:
         ap.error("model/seconds/countdown không hợp lệ.")
     if os.path.exists(a.out) and os.path.getsize(a.out):
         with open(a.out, encoding='utf-8-sig', newline='') as existing:
@@ -83,7 +82,7 @@ def main():
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     pipe = Pipeline(detect_every=1, align=not a.no_align, crop_margin=a.crop_margin,
-                    smooth_n=a.smooth_n, smoothing=a.smoothing, fusion_path=a.fusion)
+                    smooth_n=a.smooth_n, smoothing=a.smoothing)
 
     # Làm nóng TRƯỚC khi đếm giờ: lần đầu nạp model/detector mất vài giây, không được ăn vào thời gian ghi
     frame = None
@@ -129,7 +128,6 @@ def main():
                 'top3': json.dumps(r['top3']) if r else '',
                 'raw_probs': json.dumps(r['raw_probs']) if r else '',
                 'blendshapes': json.dumps(r.get('blendshapes')) if r else '',
-                'fusion_used': int(r.get('fusion_used', False)) if r else 0,
             })
         if r:
             x, y, w, h = r["box"]

@@ -1,4 +1,4 @@
-# Ghim đúng bản đã chạy 73/73 test ngày 13/11/2026; nâng cấp thì chạy lại test.
+# Ghim đúng bản đã chạy 71/71 test ngày 19/11/2026; nâng cấp thì chạy lại test.
 streamlit==1.67.0
 tensorflow==2.20.0
 keras==3.13.2

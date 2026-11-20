@@ -47,7 +47,7 @@ class LiveLoopTests(unittest.TestCase):
         self.assertGreaterEqual(len(rows), 5)
         self.assertEqual({row['track_id'] for row in rows}, {1})
         self.assertTrue(all(0 < row['quality'] <= 1 for row in rows))
-        self.assertTrue(all(row['age_low'] < row['age'] < row['age_high'] for row in rows))
+        self.assertTrue(all('age' not in row for row in rows))
         self.assertTrue(any('Không đọc được khung hình' in item.value for item in app.warning))
         self.assertTrue(np.isfinite([row['gender_prob'] for row in rows]).all())
 

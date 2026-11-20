@@ -1,6 +1,4 @@
 surprise
-fear
-disgust
 happy
 sad
 angry

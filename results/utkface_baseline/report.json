@@ -21,13 +21,6 @@
   },
   "metrics": {
     "evaluated": 23437,
-    "age": {
-      "mae": 10.250719559713273,
-      "median_absolute_error": 7.854668,
-      "within_5_years": 0.3465033920723642,
-      "within_10_years": 0.5961940521397789,
-      "group_accuracy": 0.47390877672057
-    },
     "gender": {
       "accuracy": 0.8542902248581303,
       "balanced_accuracy": 0.8550226323697685
@@ -35,84 +28,58 @@
     "by_gender": {
       "female": {
         "count": 11214,
-        "age_mae": 10.43749921232388,
-        "age_group_accuracy": 0.45737471018369896,
         "gender_accuracy": 0.8720349563046192
       },
       "male": {
         "count": 12223,
-        "age_mae": 10.07935843524503,
-        "age_group_accuracy": 0.4890779677656876,
         "gender_accuracy": 0.8380103084349178
       }
     },
     "by_race": {
       "white": {
         "count": 9977,
-        "age_mae": 11.570957670742708,
-        "age_group_accuracy": 0.4718853362734289,
         "gender_accuracy": 0.8520597373960108
       },
       "black": {
         "count": 4456,
-        "age_mae": 8.690656980700181,
-        "age_group_accuracy": 0.44591561938958707,
         "gender_accuracy": 0.8826301615798923
       },
       "asian": {
         "count": 3396,
-        "age_mae": 8.553594795936396,
-        "age_group_accuracy": 0.5356301531213192,
         "gender_accuracy": 0.7882803297997645
       },
       "indian": {
         "count": 3925,
-        "age_mae": 9.84342326267516,
-        "age_group_accuracy": 0.46445859872611467,
         "gender_accuracy": 0.8884076433121019
       },
       "other": {
         "count": 1683,
-        "age_mae": 10.929089661913249,
-        "age_group_accuracy": 0.45751633986928103,
         "gender_accuracy": 0.8461081402257873
       }
     },
     "by_age_group": {
       "0–12": {
         "count": 3374,
-        "age_mae": 15.39524806935388,
-        "age_group_accuracy": 0.509484291641968,
         "gender_accuracy": 0.5966212211025489
       },
       "13–19": {
         "count": 1177,
-        "age_mae": 15.089881051826678,
-        "age_group_accuracy": 0.20815632965165676,
         "gender_accuracy": 0.756159728122345
       },
       "20–29": {
         "count": 7253,
-        "age_mae": 8.034633667585826,
-        "age_group_accuracy": 0.4995174410588722,
         "gender_accuracy": 0.9105197849165863
       },
       "30–39": {
         "count": 4503,
-        "age_mae": 7.676561113701976,
-        "age_group_accuracy": 0.37175216522318455,
         "gender_accuracy": 0.9184987785920498
       },
       "40–49": {
         "count": 2219,
-        "age_mae": 9.069965848580441,
-        "age_group_accuracy": 0.36638125281658407,
         "gender_accuracy": 0.9400630914826499
       },
       "50+": {
         "count": 4911,
-        "age_mae": 11.723223464263896,
-        "age_group_accuracy": 0.6175931582162493,
         "gender_accuracy": 0.874160048869884
       }
     },
@@ -129,7 +96,7 @@
   },
   "limitations": [
     "Bản aligned/cropped khác phân phối ảnh webcam tự nhiên.",
-    "UTKFace nói nhãn tuổi/giới tính được DEX ước lượng rồi kiểm tra thủ công; không phải hồ sơ hộ tịch.",
+    "UTKFace nói nhãn giới tính và tuổi được DEX ước lượng rồi kiểm tra thủ công; không phải hồ sơ hộ tịch.",
     "Không có ID người ổn định để tính khoảng tin cậy theo người.",
     "Gender là hai lớp male/female theo nhãn UTKFace và model, không phải bản dạng giới."
   ],

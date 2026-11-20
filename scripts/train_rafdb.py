@@ -19,11 +19,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "core"))
 from preprocessing import prepare_face
-from webcam_data import load_manifest, split_manifest, check_content_leakage, file_hash, image_hash, configure_console
+from webcam_data import (load_manifest, split_manifest, check_content_leakage, file_hash, image_hash,
+                         configure_console, RAF_LABELS)
 from selection import qualifies
 
 LABELS = (ROOT / "models" / "labels.txt").read_text(encoding="utf-8").split()
-RAF_LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
@@ -91,24 +91,29 @@ def load_samples(data_dir, labels_file=None, images_dir=None):
     return splits["train"], [], splits["test"]
 
 
-def split_validation(samples, fraction, seed):
+def split_validation(samples, fraction, seed, group_key=None):
+    """Chia theo lớp; ảnh có cùng group_key (vd. image_hash) luôn nằm cùng một tập."""
     rng = np.random.default_rng(seed)
     train, val = [], []
     for label in range(len(LABELS)):
-        group = [sample for sample in samples if sample[1] == label]
-        if len(group) < 2:
+        groups = {}
+        for sample in samples:
+            if sample[1] == label:
+                groups.setdefault(group_key(sample[0]) if group_key else sample[0], []).append(sample)
+        groups = list(groups.values())
+        if len(groups) < 2:
             raise ValueError(f"Lớp {LABELS[label]} cần ít nhất 2 ảnh train để chia validation.")
-        rng.shuffle(group)
-        n = min(len(group) - 1, max(1, round(len(group) * fraction)))
-        val.extend(group[:n])
-        train.extend(group[n:])
+        rng.shuffle(groups)
+        n = min(len(groups) - 1, max(1, round(len(groups) * fraction)))
+        val.extend(sample for group in groups[:n] for sample in group)
+        train.extend(sample for group in groups[n:] for sample in group)
     return train, val
 
 
 def balanced_weights(samples):
     counts = np.bincount([label for _, label in samples], minlength=len(LABELS))
     if np.any(counts == 0):
-        raise ValueError("Tập train phải có đủ 7 lớp.")
+        raise ValueError(f"Tập train phải có đủ {len(LABELS)} lớp.")
     return {i: float(len(samples) / (len(LABELS) * count)) for i, count in enumerate(counts)}
 
 
@@ -120,7 +125,7 @@ def check_splits(splits):
             raise ValueError(f"Có ảnh trùng đường dẫn giữa các tập: {name}")
         seen.update(paths)
         if name in ("train", "validation") and {y for _, y in samples} != set(range(len(LABELS))):
-            raise ValueError(f"Tập {name} phải có đủ 7 lớp.")
+            raise ValueError(f"Tập {name} phải có đủ {len(LABELS)} lớp.")
 
 
 def scores_from_confusion(cm):
@@ -221,8 +226,8 @@ def main(argv=None):
         parser.error("val-fraction phải trong (0,1); epochs/batch-size/unfreeze-layers/patience phải >= 1.")
     if not np.isfinite(args.learning_rate) or args.learning_rate <= 0:
         parser.error("learning-rate phải là số hữu hạn > 0.")
-    if set(LABELS) != set(RAF_LABELS) or len(LABELS) != 7:
-        parser.error("models/labels.txt phải chứa đúng 7 nhãn RAF-DB.")
+    if not LABELS or len(set(LABELS)) != len(LABELS) or not set(LABELS) <= set(RAF_LABELS):
+        parser.error("models/labels.txt phải là các nhãn RAF-DB không trùng.")
     try:
         manifest_rows = None
         subject_splits = None
@@ -242,7 +247,7 @@ def main(argv=None):
         else:
             train, val, test = load_samples(args.data_dir, args.labels_file, args.images_dir)
             if not val:
-                train, val = split_validation(train, args.val_fraction, args.seed)
+                train, val = split_validation(train, args.val_fraction, args.seed, image_hash)
         splits = {"train": train, "validation": val, "test": test}
         check_splits(splits)
         check_content_leakage(splits)
@@ -273,7 +278,7 @@ def main(argv=None):
     keras.utils.set_random_seed(args.seed)
     model = keras.models.load_model(args.initial_model, compile=False)
     if tuple(model.input_shape[1:]) != (100, 100, 3) or model.output_shape[-1] != len(LABELS):
-        parser.error("Model phải nhận RGB (100,100,3), giá trị 0..255 và trả 7 xác suất softmax.")
+        parser.error(f"Model phải nhận RGB (100,100,3), giá trị 0..255 và trả {len(LABELS)} xác suất softmax.")
     fit_samples = train
     if args.balance == "oversample":
         rng = np.random.default_rng(args.seed)
@@ -320,10 +325,10 @@ def main(argv=None):
         def on_epoch_end(self, epoch, logs=None):
             scores = evaluate(self.model, val_ds)
             logs["val_macro_f1"] = scores["macro_f1"]
-            for label in ("sad", "fear"):
+            for label in ("sad", "angry"):
                 logs[f"val_{label}_f1"] = scores["per_class"][label]["f1"]
             print(f"\nValidation macro-F1={scores['macro_f1']:.4f}; "
-                  f"sad={logs['val_sad_f1']:.4f}; fear={logs['val_fear_f1']:.4f}")
+                  f"sad={logs['val_sad_f1']:.4f}; angry={logs['val_angry_f1']:.4f}")
             if qualifies(scores, baseline, self.best_score, args.max_other_drop):
                 self.best_score = scores["macro_f1"]
                 self.best_epoch = epoch + 1
@@ -349,7 +354,7 @@ def main(argv=None):
     if args.evaluate_test:
         run["test"] = evaluate(best, make_dataset(tf, test, args.batch_size))
     run["status"] = "complete"
-    # Used by fusion training to reject reuse of fine-tuning subjects/images as held-out data.
+    # Dùng để đánh giá sau này không lấy lại ảnh đã fine-tune làm tập giữ riêng.
     provenance = {"sha256": file_hash(args.output), "crop_config": crop_config,
                   "labels": LABELS, 'status': 'complete',
                   'initial_sha256': file_hash(args.initial_model),

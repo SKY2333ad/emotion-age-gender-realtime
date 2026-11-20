@@ -84,23 +84,12 @@ def output_status(status, face, probability):
     return status
 
 
-def weighted_median(values, weights):
-    values, weights = np.asarray(values, float), np.maximum(np.asarray(weights, float), MIN_WEIGHT)
-    order = np.argsort(values)
-    values, cumulative = values[order], np.cumsum(weights[order])
-    half = cumulative[-1] / 2
-    index = int(np.searchsorted(cumulative, half))
-    if index + 1 < len(values) and np.isclose(cumulative[index], half):
-        return float((values[index] + values[index + 1]) / 2)   # trọng số đều thì trùng np.median
-    return float(values[index])
-
-
 def weighted_mean(values, weights):
     return float(np.average(values, weights=np.maximum(np.asarray(weights, float), MIN_WEIGHT)))
 
 
 class EmotionSmoother:
-    """EMA theo chất lượng + phát hiện đổi biểu cảm + trễ nhãn, tách biệt với tuổi/giới tính."""
+    """EMA theo chất lượng + phát hiện đổi biểu cảm + trễ nhãn, tách biệt với giới tính."""
 
     def __init__(self, labels, base=0.35, fast=0.75, change=0.6, margin=0.08):
         self.labels, self.base, self.fast, self.change, self.margin = labels, base, fast, change, margin

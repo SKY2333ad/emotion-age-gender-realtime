@@ -29,7 +29,7 @@ for c in ("angle", "dist"):
     df[c] = df[c].astype(str)
 df["correct"] = pd.to_numeric(df["correct"], errors="coerce")
 df["align"] = df["align"].astype(str)
-EXPR = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+EXPR = ["surprise", "happy", "sad", "angry", "neutral"]
 
 
 def cond_name(r):
@@ -38,7 +38,7 @@ def cond_name(r):
         parts.append(f"che={r['occl']}")
     if r["align"] == "off":
         parts.append("KHONG can chinh")
-    for key in ('crop_margin', 'smooth_n', 'fusion_used'):
+    for key in ('crop_margin', 'smooth_n'):
         if key in r:
             parts.append(f'{key}={r[key]}')
     return " | ".join(parts)

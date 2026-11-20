@@ -1,4 +1,4 @@
-"""One checkpoint selection rule shared by fine-tuning and learned blendshape fusion."""
+"""Luật chọn checkpoint khi fine-tune: macro-F1 phải tăng, sad và angry không được giảm."""
 import numpy as np
 
 
@@ -11,8 +11,8 @@ def qualifies(scores, baseline, best_macro_f1, max_other_drop=0.03):
         return False
     if scores['macro_f1'] <= best_macro_f1 + 1e-8:
         return False
-    if any(scores['per_class'][label]['f1'] < baseline['per_class'][label]['f1'] for label in ('sad', 'fear')):
+    if any(scores['per_class'][label]['f1'] < baseline['per_class'][label]['f1'] for label in ('sad', 'angry')):
         return False
-    others = [label for label in labels if label not in ('sad', 'fear')]
+    others = [label for label in labels if label not in ('sad', 'angry')]
     return float(np.mean([baseline['per_class'][label]['f1'] - scores['per_class'][label]['f1']
                           for label in others])) <= max_other_drop

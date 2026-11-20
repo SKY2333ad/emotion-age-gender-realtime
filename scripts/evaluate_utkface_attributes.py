@@ -1,6 +1,7 @@
-"""Đánh giá genderage.onnx trên UTKFace bằng đúng bbox MediaPipe của dự án.
+"""Đánh giá giới tính của genderage.onnx trên UTKFace bằng đúng bbox MediaPipe của dự án.
 
-Chỉ đọc ảnh và lưu số liệu dự đoán; không tạo hoặc lưu crop khuôn mặt.
+Chỉ đọc ảnh và lưu số liệu dự đoán; không tạo hoặc lưu crop khuôn mặt. Tuổi thật (nhãn UTKFace)
+chỉ dùng để chia nhóm khi báo độ chính xác giới tính; dự án không dự đoán tuổi.
 """
 import argparse
 import csv
@@ -18,12 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'core'))
 from attributes import CROP_SCALE, MODEL_PATH, predict_attributes
 from detectors import detect_image_faces
-from ui_helpers import AGE_GROUPS, age_group, reference_age_group
 from webcam_data import configure_console, file_hash, read_image
 
-FIELDS = ['file', 'age_true', 'gender_true', 'race', 'age_pred', 'gender_pred',
-          'gender_prob', 'age_abs_error', 'age_group_true', 'age_group_pred',
-          'age_group_correct', 'gender_correct']
+FIELDS = ['file', 'age_true', 'gender_true', 'race', 'gender_pred', 'gender_prob', 'age_group_true',
+          'gender_correct']
+TRUE_AGE_GROUPS = ['0–12', '13–19', '20–29', '30–39', '40–49', '50+']
 GENDERS = {0: 'male', 1: 'female'}
 RACES = {0: 'white', 1: 'black', 2: 'asian', 3: 'indian', 4: 'other'}
 
@@ -37,6 +37,10 @@ def parse_label(path):
     if not 0 <= age <= 116 or gender not in GENDERS or race not in RACES:
         return None
     return age, GENDERS[gender], RACES[race]
+
+
+def true_age_group(age):
+    return TRUE_AGE_GROUPS[sum(age >= limit for limit in (12.5, 19.5, 29.5, 39.5, 49.5))]
 
 
 def prediction_row(path, label, crop_scale, tta=False):
@@ -54,14 +58,10 @@ def prediction_row(path, label, crop_scale, tta=False):
     if result is None:
         return None, 'invalid_prediction'
     age_true, gender_true, race = label
-    group_true, group_pred = reference_age_group(age_true), age_group(result['age'])
     return {
         'file': path.name, 'age_true': age_true, 'gender_true': gender_true, 'race': race,
-        'age_pred': f"{result['age']:.6f}", 'gender_pred': result['gender'],
-        'gender_prob': f"{result['gender_prob']:.6f}",
-        'age_abs_error': f"{abs(result['age'] - age_true):.6f}",
-        'age_group_true': group_true, 'age_group_pred': group_pred,
-        'age_group_correct': int(group_true == group_pred),
+        'gender_pred': result['gender'], 'gender_prob': f"{result['gender_prob']:.6f}",
+        'age_group_true': true_age_group(age_true),
         'gender_correct': int(gender_true == result['gender'])}, reason
 
 
@@ -90,16 +90,9 @@ def safe_mean(values):
 
 
 def metrics(rows):
-    errors = [float(row['age_abs_error']) for row in rows]
     gender_correct = [int(row['gender_correct']) for row in rows]
-    groups_correct = [int(row['age_group_correct']) for row in rows]
     result = {
         'evaluated': len(rows),
-        'age': {'mae': safe_mean(errors),
-                'median_absolute_error': float(np.median(errors)) if errors else None,
-                'within_5_years': safe_mean([error <= 5 for error in errors]),
-                'within_10_years': safe_mean([error <= 10 for error in errors]),
-                'group_accuracy': safe_mean(groups_correct)},
         'gender': {'accuracy': safe_mean(gender_correct)},
         'by_gender': {}, 'by_race': {}, 'by_age_group': {},
         'gender_confusion': {'female': {'female': 0, 'male': 0},
@@ -108,14 +101,12 @@ def metrics(rows):
         result['gender_confusion'][row['gender_true']][row['gender_pred']] += 1
     dimensions = [('by_gender', 'gender_true', ('female', 'male')),
                   ('by_race', 'race', tuple(RACES.values())),
-                  ('by_age_group', 'age_group_true', tuple(AGE_GROUPS))]
+                  ('by_age_group', 'age_group_true', tuple(TRUE_AGE_GROUPS))]
     for output_key, field, ordered_values in dimensions:
         for value in ordered_values:
             subset = [row for row in rows if row[field] == value]
-            subset_errors = [float(row['age_abs_error']) for row in subset]
             result[output_key][value] = {
-                'count': len(subset), 'age_mae': safe_mean(subset_errors),
-                'age_group_accuracy': safe_mean([int(row['age_group_correct']) for row in subset]),
+                'count': len(subset),
                 'gender_accuracy': safe_mean([int(row['gender_correct']) for row in subset])}
     accuracies = [value['gender_accuracy'] for value in result['by_gender'].values()
                   if value['gender_accuracy'] is not None]
@@ -202,10 +193,7 @@ def main(argv=None):
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     values = report['metrics']
     print(f"Phủ: {len(rows)}/{requested} ({report['coverage']['rate']:.1%})")
-    print(f"Tuổi MAE: {values['age']['mae']:.2f} năm · trong ±5: {values['age']['within_5_years']:.1%} · "
-          f"trong ±10: {values['age']['within_10_years']:.1%}")
-    print(f"Đúng nhóm tuổi: {values['age']['group_accuracy']:.1%} · "
-          f"đúng giới tính: {values['gender']['accuracy']:.1%} · "
+    print(f"Đúng giới tính: {values['gender']['accuracy']:.1%} · "
           f"balanced accuracy: {values['gender']['balanced_accuracy']:.1%}")
     print(f'Báo cáo: {report_path}')
     return 0

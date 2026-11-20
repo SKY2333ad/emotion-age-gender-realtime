@@ -1,4 +1,6 @@
-"""Ước lượng tuổi/giới tính cục bộ bằng genderage.onnx, không phát hiện mặt lại."""
+"""Ước lượng giới tính cục bộ bằng genderage.onnx, không phát hiện mặt lại.
+
+Model trả thêm một giá trị tuổi; dự án không dùng giá trị đó."""
 import json
 from pathlib import Path
 import threading
@@ -9,8 +11,7 @@ import numpy as np
 MODEL_PATH = Path(__file__).resolve().parents[1] / 'models' / 'genderage.onnx'
 CALIBRATION_PATH = MODEL_PATH.with_name('genderage_calibration.json')
 INPUT_SIZE = 96
-# Chọn theo macro-F1 nhóm tuổi trên validation UTKFace khi thử 1.2–1.6.
-# 1.5 cũng chính là hệ số crop trong mã Attribute gốc của InsightFace.
+# 1.5 là hệ số crop trong mã Attribute gốc của InsightFace.
 CROP_SCALE = 1.5
 _CACHE = None
 _LOCK = threading.Lock()
@@ -21,7 +22,7 @@ def load_calibration():
     try:
         return json.loads(CALIBRATION_PATH.read_text(encoding='utf-8'))
     except (OSError, ValueError):
-        return {'gender_temperature': 1.0, 'age_intervals': {}}
+        return {'gender_temperature': 1.0}
 
 
 def calibrate_probability(probability, temperature):
@@ -36,7 +37,7 @@ def _get_model():
         if _CACHE is None:
             if not MODEL_PATH.is_file():
                 raise FileNotFoundError(
-                    f'Thiếu mô hình tuổi/giới tính: {MODEL_PATH}. '
+                    f'Thiếu mô hình giới tính: {MODEL_PATH}. '
                     'Hãy tải genderage.onnx từ gói buffalo_l theo README.md.')
             try:
                 import onnxruntime as ort
@@ -56,7 +57,7 @@ def _get_model():
                     raise ValueError('Cần đầu vào float32 [N, 3, 96, 96], đầu ra [1, 3].')
                 _CACHE = (session, inputs[0].name, outputs[0].name)
             except Exception as exc:
-                raise RuntimeError(f'Không nạp được mô hình tuổi/giới tính: {exc}') from exc
+                raise RuntimeError(f'Không nạp được mô hình giới tính: {exc}') from exc
         return _CACHE
 
 
@@ -95,7 +96,7 @@ def _make_blob(frame_bgr, box, crop_scale=CROP_SCALE, flip=False):
 
 
 def predict_attributes(frame_bgr, box, angle=0.0, crop_scale=CROP_SCALE, tta=False):
-    """Trả {age, gender, gender_prob}, hoặc None nếu dữ liệu không hợp lệ.
+    """Trả {gender, gender_prob}, hoặc None nếu dữ liệu không hợp lệ.
 
     angle được giữ trong API nhưng cố ý không dùng: model gốc không xoay crop.
     gender_prob là softmax thô của giới tính trả về; Pipeline áp temperature khi tổng hợp.
@@ -110,7 +111,7 @@ def predict_attributes(frame_bgr, box, angle=0.0, crop_scale=CROP_SCALE, tta=Fal
         outputs = [np.asarray(session.run([output_name], {input_name: blob})[0], dtype=np.float64)
                    for blob in blobs]
     except Exception as exc:
-        raise RuntimeError(f'Lỗi suy luận tuổi/giới tính: {exc}') from exc
+        raise RuntimeError(f'Lỗi suy luận giới tính: {exc}') from exc
     output = np.mean(outputs, axis=0) if all(item.shape == (1, 3) for item in outputs) else outputs[0]
     if output.shape != (1, 3) or not np.isfinite(output).all():
         return None
@@ -118,8 +119,4 @@ def predict_attributes(frame_bgr, box, angle=0.0, crop_scale=CROP_SCALE, tta=Fal
     weights = np.exp(logits - logits.max())
     probabilities = weights / weights.sum()
     index = int(np.argmax(probabilities))
-    age = float(output[0, 2] * 100)
-    if not np.isfinite(age) or age < 0:
-        return None
-    return {'age': age, 'gender': ('female', 'male')[index],
-            'gender_prob': float(probabilities[index])}
+    return {'gender': ('female', 'male')[index], 'gender_prob': float(probabilities[index])}

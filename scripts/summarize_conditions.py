@@ -9,7 +9,7 @@ Theo từng điều kiện (ánh sáng, góc mặt, khoảng cách, che khuất)
 Trên toàn bộ dữ liệu, theo từng tổ hợp detector + model (+ no-align):
     Accuracy, Precision, Recall, F1 từng lớp, macro-F1  -> metrics_overall.csv, metrics_per_class.csv
     Confusion matrix                                    -> confusion_<tổ hợp>.png
-Lưu ý khi viết báo cáo: số người thử ít, biểu cảm do người thử diễn (sad/fear khó diễn giống thật)
+Lưu ý khi viết báo cáo: số người thử ít, biểu cảm do người thử diễn (sad khó diễn giống thật)
 -> kết quả chỉ mang tính tham khảo.
 """
 import os
@@ -35,11 +35,11 @@ if "align" not in df.columns:
     df["align"] = "on"
 df["combo"] = df["detector"] + " + " + df["model"] + \
     np.where((df["detector"] == "mediapipe") & (df["align"] == "off"), " (no-align)", "")
-for key in ('crop_margin', 'smooth_n', 'fusion_used'):
+for key in ('crop_margin', 'smooth_n'):
     if key in df:
         df['combo'] += ' | ' + key + '=' + df[key].astype(str)
 
-LABELS = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+LABELS = ["surprise", "happy", "sad", "angry", "neutral"]
 FACTORS = {"light": "Ánh sáng", "angle": "Góc mặt (độ)", "dist": "Khoảng cách (m)", "occl": "Che khuất"}
 ORDER = {"light": ["sang_deu", "binh_thuong", "thieu_sang", "nguoc_sang"],
          "angle": ["0", "30", "45"], "dist": ["0.5", "1", "2", "3"], "occl": ["none", "kinh", "khau_trang"]}

@@ -1,4 +1,4 @@
-"""Offline validation/test, crop-margin comparison and sad/fear confusion reports."""
+"""Offline validation/test, crop-margin comparison and sad/angry confusion reports."""
 import argparse
 import csv
 import json
@@ -10,7 +10,6 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
 import numpy as np
 from detectors import align_crop
-from fusion import Fusion
 from predict import predict, DEFAULT_MODEL, MODEL_NAMES, MODEL_DIR
 from webcam_data import (LABELS, CROP_VERSION, load_manifest, split_manifest, read_image, file_hash,
                          image_hash, check_content_leakage, configure_console)
@@ -57,7 +56,7 @@ def predict_row(row, model, margin, align=True):
 
 
 def score_predictions(rows, predictions):
-    matrix = np.zeros((7, 7), dtype=np.int64)
+    matrix = np.zeros((len(LABELS), len(LABELS)), dtype=np.int64)
     for row, probs in zip(rows, predictions):
         matrix[LABELS.index(row['label']), LABELS.index(max(probs, key=probs.get))] += 1
     return scores_from_confusion(matrix)
@@ -81,11 +80,11 @@ def write_reports(directory, results, details):
         matrix = np.array(metrics['confusion_matrix'])
         fig, axis = plt.subplots(figsize=(7, 6))
         axis.imshow(matrix / np.maximum(matrix.sum(axis=1, keepdims=True), 1), vmin=0, vmax=1, cmap='Blues')
-        axis.set(xticks=range(7), yticks=range(7), xticklabels=LABELS, yticklabels=LABELS,
+        axis.set(xticks=range(len(LABELS)), yticks=range(len(LABELS)), xticklabels=LABELS, yticklabels=LABELS,
                  xlabel='Predicted', ylabel='True', title=config)
         plt.setp(axis.get_xticklabels(), rotation=45, ha='right')
-        for i in range(7):
-            for j in range(7):
+        for i in range(len(LABELS)):
+            for j in range(len(LABELS)):
                 axis.text(j, i, str(matrix[i, j]), ha='center', va='center')
         fig.tight_layout()
         fig.savefig(directory / f'confusion_{config}.png', dpi=150)
@@ -100,7 +99,6 @@ def main(argv=None):
     parser.add_argument('--split', choices=['validation', 'test'], default='validation')
     parser.add_argument('--margins', type=float, nargs='+', default=[0.0, 0.05, 0.10, 0.15])
     parser.add_argument('--no-align', action='store_true')
-    parser.add_argument('--fusion', type=Path)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--val-fraction', type=float, default=0.15)
     parser.add_argument('--test-fraction', type=float, default=0.2)
@@ -118,31 +116,16 @@ def main(argv=None):
         parser.error('Tập đánh giá rỗng.')
     results, details = {}, []
     for margin in args.margins:
-        correction = Fusion(args.fusion, model_path, margin, not args.no_align) if args.fusion else None
-        if correction and any((row.get('subject') is not None and str(row['subject']) in correction.data['train_subjects']) or
-                              file_hash(row['path']) in correction.data['train_image_hashes'] or
-                              image_hash(row['path']) in correction.data.get('train_pixel_hashes', []) for row in rows):
-            parser.error('Tập đánh giá trùng dữ liệu train fusion.')
-        predictions, fused = [], []
-        fused_count = 0
+        predictions = []
         for row in rows:
             probs = predict_row(row, args.model, margin, not args.no_align)
             predictions.append(probs)
-            if correction:
-                can_fuse = bool(row.get('blendshapes')) and all(key in row['blendshapes'] for key in correction.names)
-                fused.append(correction.predict(probs, row['blendshapes']) if can_fuse else probs)
-                fused_count += int(can_fuse)
             top3 = sorted(probs, key=probs.get, reverse=True)[:3]
             details.append({'path': str(row['path']), 'subject': row['subject'], 'true': row['label'],
-                            'margin': margin, 'prediction': top3[0], 'top3': json.dumps({k: probs[k] for k in top3}),
-                            'fusion_prediction': max(fused[-1], key=fused[-1].get) if correction else ''})
+                            'margin': margin, 'prediction': top3[0], 'top3': json.dumps({k: probs[k] for k in top3})})
         key = f'{args.split}_margin_{margin:.2f}'
         results[key] = score_predictions(rows, predictions)
-        if correction:
-            results[key + '_fusion'] = score_predictions(rows, fused)
-            results[key + '_fusion']['fusion_coverage'] = {'used': fused_count, 'total': len(rows),
-                                                          'fallback': len(rows) - fused_count}
-        print(key, json.dumps({label: results[key]['per_class'][label] for label in ('sad', 'fear')}), flush=True)
+        print(key, json.dumps({label: results[key]['per_class'][label] for label in ('sad', 'angry')}), flush=True)
     write_reports(args.output, results, details)
     print(f'Report: {args.output}')
 

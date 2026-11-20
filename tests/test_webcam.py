@@ -1,4 +1,4 @@
-"""Tests for subject isolation, leakage, learned fusion and production crop behavior."""
+"""Tests for subject isolation, leakage and production crop behavior."""
 import json
 import sys
 import tempfile
@@ -13,9 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'core'))
 from detectors import align_crop, detect_faces
-from fusion import Fusion, features
-from webcam_data import LABELS, CROP_VERSION, split_subjects, check_content_leakage, file_hash, quality
-from scripts.train_fusion import fit_correction
+from webcam_data import LABELS, CROP_VERSION, split_subjects, check_content_leakage, quality
 from webcam_data import write_image, load_manifest
 
 
@@ -56,53 +54,8 @@ class WebcamTests(unittest.TestCase):
         self.assertEqual(quality(np.full((90, 90, 3), 100, np.uint8), (0, 0, 90, 90))['reason'], 'blurry')
         self.assertEqual(quality(np.full((90, 90, 3), 100, np.uint8), (0, 0, 30, 30))['reason'], 'face too small')
 
-    def test_fusion_learns_and_guards_checkpoint_and_crop(self):
-        labels = np.tile(np.arange(7), 5)
-        probabilities = np.full((35, 7), 0.1)
-        probabilities[:, 6] = 0.4
-        x = np.concatenate((probabilities, np.eye(7)[labels]), axis=1)
-        result = fit_correction(x, probabilities, labels, x, probabilities, labels,
-                                epochs=100, learning_rate=0.1, regularization=0.01)
-        self.assertGreater(result['best_validation']['macro_f1'], result['baseline_validation']['macro_f1'])
-        with tempfile.TemporaryDirectory() as temporary:
-            model, artifact = Path(temporary) / 'base.keras', Path(temporary) / 'fusion.json'
-            model.write_bytes(b'checkpoint')
-            data = {key: result[key] for key in ('weights', 'bias', 'mean', 'scale')}
-            data.update({'version': 1, 'labels': LABELS, 'base_sha256': file_hash(model),
-                         'blendshape_names': [f'bs{i}' for i in range(7)],
-                         'crop_config': {'margin': 0.15, 'align': True, 'version': CROP_VERSION}})
-            artifact.write_text(json.dumps(data), encoding='utf-8')
-            fusion = Fusion(artifact, model, 0.15, True)
-            probs = dict(zip(LABELS, probabilities[0]))
-            output = fusion.predict(probs, dict(zip(data['blendshape_names'], np.eye(7)[0])))
-            self.assertAlmostEqual(sum(output.values()), 1)
-            self.assertEqual(max(output, key=output.get), LABELS[0])
-            with self.assertRaises(ValueError):
-                Fusion(artifact, model, 0.05, True)
-            with self.assertRaises(ValueError):
-                features(probs, {}, data['blendshape_names'])
-            model.write_bytes(b'changed-checkpoint')
-            with self.assertRaises(ValueError):
-                Fusion(artifact, model, 0.15, True)
-
-    def test_fusion_uses_fresh_blendshapes_every_frame(self):
-        import pipeline
-        frame = np.full((120, 120, 3), 100, np.uint8)
-        face = {'box': (20, 20, 60, 60), 'angle': 0, 'blendshapes': {'jawOpen': 0.3}}
-        probs = {label: float(label == 'sad') for label in LABELS}
-        with patch.object(pipeline, 'Fusion') as correction, \
-                patch.object(pipeline, 'detect_faces', return_value=[face]) as detector, \
-                patch.object(pipeline, 'predict', return_value=('sad', 1, probs)):
-            correction.return_value.predict.return_value = probs
-            pipe = pipeline.Pipeline(detect_every=3, fusion_path='test.json')
-            for _ in range(3):
-                result = pipe.process_frame(frame)
-                self.assertTrue(result[0]['fusion_used'])
-                self.assertEqual(result[0]['label'], 'sad')
-            self.assertEqual(detector.call_count, 3)
-
-    def test_manifest_recrop_fusion_and_test_report_work_together(self):
-        from scripts import prepare_webcam, train_fusion, evaluate_webcam
+    def test_manifest_recrop_and_test_report_work_together(self):
+        from scripts import prepare_webcam, evaluate_webcam
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             manifest = root / 'manifest.jsonl'
@@ -119,56 +72,21 @@ class WebcamTests(unittest.TestCase):
             prepared = root / 'prepared'
             prepare_webcam.main(['--manifest', str(manifest), '--output', str(prepared), '--margin', '0.10'])
             prepared_manifest = prepared / 'manifest.jsonl'
-            self.assertEqual(len(load_manifest(prepared_manifest)), 35)
+            self.assertEqual(len(load_manifest(prepared_manifest)), 5 * len(LABELS))
             model = root / 'efficientnet.keras'
             model.write_bytes(b'test-checkpoint')
-            artifact = root / 'fusion.json'
             probs = {label: (0.4 if label == 'neutral' else 0.1) for label in LABELS}
-            with patch.object(train_fusion, 'MODEL_DIR', str(root)), \
-                    patch.object(train_fusion, 'predict_row', return_value=probs):
-                self.assertEqual(train_fusion.main(['--manifest', str(prepared_manifest), '--model', 'efficientnet',
-                                                   '--margin', '0.10', '--output', str(artifact),
-                                                   '--learning-rate', '0.1', '--regularization', '0.01']), 0)
-            self.assertTrue(artifact.exists())
             output = root / 'evaluation'
             with patch.object(evaluate_webcam, 'MODEL_DIR', str(root)), \
                     patch.object(evaluate_webcam, 'predict_row', return_value=probs):
                 evaluate_webcam.main(['--manifest', str(prepared_manifest), '--model', 'efficientnet',
-                                      '--split', 'test', '--margins', '0.10', '--fusion', str(artifact),
+                                      '--split', 'test', '--margins', '0.10',
                                       '--output', str(output)])
             report = json.loads((output / 'report.json').read_text(encoding='utf-8'))
-            self.assertGreater(report['test_margin_0.10_fusion']['macro_f1'], report['test_margin_0.10']['macro_f1'])
+            self.assertEqual(sum(map(sum, report['test_margin_0.10']['confusion_matrix'])), len(LABELS))
             self.assertTrue((output / 'predictions.csv').exists())
-            self.assertTrue((output / 'confusion_test_margin_0.10_fusion.png').exists())
+            self.assertTrue((output / 'confusion_test_margin_0.10.png').exists())
 
-    def test_invalid_fusion_never_silently_falls_back_on_retry(self):
-        import pipeline
-        frame = np.ones((120, 120, 3), np.uint8)
-        with patch.object(pipeline, 'Fusion', side_effect=ValueError('wrong checkpoint')) as correction, \
-                patch.object(pipeline, 'predict') as classifier:
-            pipe = pipeline.Pipeline(fusion_path='wrong.json')
-            for _ in range(2):
-                with self.assertRaisesRegex(ValueError, 'wrong checkpoint'):
-                    pipe.process_frame(frame)
-            self.assertEqual(correction.call_count, 2)
-            classifier.assert_not_called()
-
-    def test_missing_blendshapes_fallback_clears_fused_history(self):
-        import pipeline
-        frame = np.full((120, 120, 3), 100, np.uint8)
-        face = {'box': (20, 20, 60, 60), 'angle': 0, 'blendshapes': {'jawOpen': 0.3}}
-        sad = {label: float(label == 'sad') for label in LABELS}
-        fear = {label: float(label == 'fear') for label in LABELS}
-        with patch.object(pipeline, 'Fusion') as correction, \
-                patch.object(pipeline, 'detect_faces', side_effect=[[face], [dict(face, blendshapes=None)]]), \
-                patch.object(pipeline, 'predict', return_value=('sad', 1, sad)):
-            correction.return_value.predict.return_value = fear
-            pipe = pipeline.Pipeline(fusion_path='test.json')
-            self.assertEqual(pipe.process_frame(frame)[0]['label'], 'fear')
-            result = pipe.process_frame(frame)[0]
-            self.assertFalse(result['fusion_used'])
-            self.assertEqual(result['label'], 'sad')
-            self.assertEqual(result['probs']['sad'], 1)
 
 
 if __name__ == '__main__':

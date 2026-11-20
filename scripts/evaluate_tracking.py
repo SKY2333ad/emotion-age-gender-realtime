@@ -15,8 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'core'))
 from quality import EmotionSmoother
 from tracker import FaceTracker
+from webcam_data import configure_console
 
-AGE_NOISE, GENDER_NOISE = 6.0, 0.08    # độ lệch chuẩn nhiễu giả định giữa các lần suy luận
+GENDER_NOISE = 0.08    # độ lệch chuẩn nhiễu giả định giữa các lần suy luận
 
 MATCH_DIST = 80
 LABELS = ['neutral', 'happy', 'sad']
@@ -119,7 +120,7 @@ def smoothing_trial(mode, seed, noise, frames=300, change_every=60):
 
 
 def attribute_trial(every, history, seed, frames=600, change_at=300, quality=0.8):
-    """Đi qua Pipeline thật với model giả: đổi tuổi/giới tính ở khung change_at, đếm số khung tới khi kết quả đổi."""
+    """Đi qua Pipeline thật với model giả: đổi giới tính ở khung change_at, đếm số khung tới khi kết quả đổi."""
     from unittest.mock import patch
     import pipeline
     rng = np.random.default_rng(seed)
@@ -131,25 +132,22 @@ def attribute_trial(every, history, seed, frames=600, change_at=300, quality=0.8
     def fake_attributes(*_):
         before = step['t'] < change_at
         p_male = np.clip((0.9 if before else 0.1) + rng.normal(0, GENDER_NOISE), .01, .99)
-        return {'age': float((25 if before else 60) + rng.normal(0, AGE_NOISE)),
-                'gender': 'male' if p_male >= .5 else 'female', 'gender_prob': float(max(p_male, 1 - p_male))}
+        return {'gender': 'male' if p_male >= .5 else 'female', 'gender_prob': float(max(p_male, 1 - p_male))}
 
-    with patch.object(pipeline, 'detect_faces', return_value=[face]),             patch.object(pipeline, 'predict', return_value=('neutral', 1.0, probs)),             patch.object(pipeline, 'predict_attributes', fake_attributes),             patch.object(pipeline, 'face_quality', return_value={'score': quality}),             patch.object(pipeline, 'load_calibration', return_value={'gender_temperature': 1.0, 'age_intervals': {}}):
+    with patch.object(pipeline, 'detect_faces', return_value=[face]),             patch.object(pipeline, 'predict', return_value=('neutral', 1.0, probs)),             patch.object(pipeline, 'predict_attributes', fake_attributes),             patch.object(pipeline, 'face_quality', return_value={'score': quality}),             patch.object(pipeline, 'load_calibration', return_value={'gender_temperature': 1.0}):
         pipe = pipeline.Pipeline(attr_every=every, attr_history=history)
-        ages, genders = [], []
+        genders = []
         for t in range(frames):
             step['t'] = t
             result = pipe.process_frame(frame)[0]
-            ages.append(result['age'])
             genders.append(result['gender'])
     stable = genders[60:change_at]
-    return {'age_delay': next(t - change_at for t in range(change_at, frames) if ages[t] >= 42.5),
-            'gender_delay': next(t - change_at for t in range(change_at, frames) if genders[t] == 'female'),
-            'gender_flips': sum(a != b for a, b in zip(stable, stable[1:])),
-            'age_jitter': float(np.std(ages[60:change_at]))}
+    return {'gender_delay': next(t - change_at for t in range(change_at, frames) if genders[t] == 'female'),
+            'gender_flips': sum(a != b for a, b in zip(stable, stable[1:]))}
 
 
 def main():
+    configure_console()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--output', type=Path, default=ROOT / 'results' / 'tracking_evaluation.json')
     args = parser.parse_args()

@@ -67,16 +67,12 @@
   },
   "attributes": {
     "every=12 history=15": {
-      "age_delay": 84.0,
-      "gender_delay": 95.2,
-      "gender_flips": 0.0,
-      "age_jitter": 1.3899381816611998
+      "gender_delay": 94.8,
+      "gender_flips": 0.0
     },
     "every=5 history=12": {
-      "age_delay": 27.5,
-      "gender_delay": 31.166666666666668,
-      "gender_flips": 0.0,
-      "age_jitter": 1.8676426064569844
+      "gender_delay": 31.333333333333332,
+      "gender_flips": 0.0
     }
   }
 }

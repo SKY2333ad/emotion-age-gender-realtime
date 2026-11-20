@@ -10,7 +10,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'core'))
 sys.path.insert(0, str(ROOT))
-from quality import EmotionSmoother, face_quality, weighted_mean, weighted_median
+from quality import EmotionSmoother, face_quality, weighted_mean
 from scripts.evaluate_tracking import CenterMatcher, id_switches, scenarios
 from tracker import FaceTracker, iou
 from webcam_data import read_image
@@ -90,14 +90,10 @@ class QualityTests(unittest.TestCase):
     def test_box_outside_frame_scores_zero(self):
         self.assertEqual(face_quality(self.sharp, (500, 500, 30, 30))['score'], 0)
 
-    def test_weighted_median_and_mean(self):
-        self.assertEqual(weighted_median([10, 90, 20], [1, 1, 1]), 20)
-        self.assertEqual(weighted_median([10, 20], [1, 1]), np.median([10, 20]))
-        self.assertEqual(weighted_median([20, 90, 21, 22], [1, 0.0, 1, 1]), 21)
+    def test_weighted_mean(self):
         self.assertAlmostEqual(weighted_mean([0, 1], [3, 1]), .25)
 
-    def test_low_quality_frame_cannot_flip_age_or_emotion(self):
-        self.assertLess(weighted_median([30, 31, 95, 96], [1, 1, 0.05, 0.05]), 40)
+    def test_low_quality_frame_cannot_flip_emotion(self):
         smoother = EmotionSmoother(LABELS)
         smoother.update({'happy': .9, 'sad': .1}, 1.0)
         for _ in range(3):

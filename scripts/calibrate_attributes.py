@@ -1,10 +1,12 @@
-"""Hiệu chuẩn gender_prob (temperature) và khoảng tuổi (conformal theo nhóm) trên validation UTKFace.
+"""Hiệu chuẩn gender_prob (temperature) trên validation UTKFace, báo kết quả test và độ chênh giữa các nhóm.
 
-Dùng cùng split hash với calibrate_age_groups.py; test chỉ để báo cáo. Ghi tham số riêng khỏi trọng số model.
+Split cố định theo hash tên file; test chỉ để báo cáo. Ghi tham số riêng khỏi trọng số model.
+Nhóm tuổi trong báo cáo lấy từ nhãn tuổi thật của UTKFace, chỉ để xem giới tính đúng/sai ở nhóm nào.
 python scripts/calibrate_attributes.py results/utkface_baseline/predictions.csv --report-dir results/attribute_calibration
 """
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -14,12 +16,15 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'core'))
 sys.path.insert(0, str(ROOT))
-from scripts.calibrate_age_groups import split_is_validation
-from ui_helpers import AGE_GROUPS, age_group
 from webcam_data import configure_console
 
 BOOTSTRAP_SEED, BOOTSTRAP_ROUNDS = 42, 1000
-INTERVAL_COVERAGE = 0.8
+TRUE_AGE_GROUPS = ['0–12', '13–19', '20–29', '30–39', '40–49', '50+']
+
+
+def split_is_validation(filename):
+    """Split ổn định 20%; không phụ thuộc thứ tự file hay random state."""
+    return int(hashlib.sha256(filename.encode('utf-8')).hexdigest()[:8], 16) % 5 == 0
 
 
 def load(path):
@@ -31,8 +36,6 @@ def load(path):
     return {'validation': np.array([split_is_validation(row['file']) for row in rows]),
             'logit': np.log(p_male / (1 - p_male)),
             'male': np.array([row['gender_true'] == 'male' for row in rows]),
-            'age': np.array([float(row['age_true']) for row in rows]),
-            'predicted_age': np.array([float(row['age_pred']) for row in rows]),
             'group': np.array([row['age_group_true'] for row in rows])}
 
 
@@ -68,70 +71,33 @@ def fit_temperature(logit, truth):
     return float(grid[int(np.argmin([loss(value) for value in grid]))])
 
 
-def fit_intervals(predicted, truth, coverage=INTERVAL_COVERAGE):
-    """Sai số phân vị theo nhóm tuổi dự đoán: khoảng thực nghiệm trên UTKFace, không phải khoảng tin cậy cá nhân."""
-    groups = np.array([age_group(value) for value in predicted])
-    table = {}
-    for name in AGE_GROUPS:
-        errors = truth[groups == name] - predicted[groups == name]
-        tail = (1 - coverage) / 2
-        table[name] = [float(np.quantile(errors, tail)), float(np.quantile(errors, 1 - tail))]
-    return table
-
-
-def interval_coverage(predicted, truth, table):
-    groups = np.array([age_group(value) for value in predicted])
-    low = predicted + np.array([table[name][0] for name in groups])
-    high = predicted + np.array([table[name][1] for name in groups])
-    return {'coverage': float(((truth >= low) & (truth <= high)).mean()), 'mean_width': float((high - low).mean())}
-
-
 def ci(values):
     return [float(np.percentile(values, 2.5)), float(np.percentile(values, 97.5))]
 
 
 def subgroup(mask, probability, data):
     """Không có ID người nên bootstrap theo ảnh; UTKFace có thể chứa nhiều ảnh của một người."""
-    truth, age, predicted_age = data['male'][mask], data['age'][mask], data['predicted_age'][mask]
-    chosen = probability[mask]
+    truth, chosen = data['male'][mask], probability[mask]
     rng = np.random.default_rng(BOOTSTRAP_SEED)
-    accuracy, mae = [], []
+    accuracy = []
     for _ in range(BOOTSTRAP_ROUNDS):
         index = rng.integers(0, len(truth), len(truth))
         accuracy.append(((chosen[index] >= .5) == truth[index]).mean())
-        mae.append(np.abs(predicted_age[index] - age[index]).mean())
     metrics = binary_metrics(chosen, truth)
     predicted_male = chosen >= .5
     tp, fp, fn = (predicted_male & truth).sum(), (predicted_male & ~truth).sum(), (~predicted_male & truth).sum()
     return {'count': int(mask.sum()), 'gender_accuracy': metrics['accuracy'], 'gender_accuracy_ci95': ci(accuracy),
             'male_precision': float(tp / max(tp + fp, 1)), 'male_recall': float(tp / max(tp + fn, 1)),
-            'male_f1': float(2 * tp / max(2 * tp + fp + fn, 1)),
-            'gender_ece': metrics['ece'], 'age_mae': float(np.abs(predicted_age - age).mean()), 'age_mae_ci95': ci(mae),
-            'age_bias': float((predicted_age - age).mean()),
+            'male_f1': float(2 * tp / max(2 * tp + fp + fn, 1)), 'gender_ece': metrics['ece'],
             'male_fnr': float((~predicted_male[truth]).mean()) if truth.any() else None,
             'male_fpr': float(predicted_male[~truth].mean()) if (~truth).any() else None}
 
 
-def gaps(table, names):
-    """Khoảng cách lớn nhất giữa các nhóm cùng loại, kèm tên nhóm tốt nhất và kém nhất."""
-    result = {}
-    for metric in ('gender_accuracy', 'age_mae'):
-        ranked = sorted(names, key=lambda name: table[name][metric])
-        result[metric] = {'gap': table[ranked[-1]][metric] - table[ranked[0]][metric],
-                          'lowest': ranked[0], 'highest': ranked[-1]}
-    return result
-
-
-def age_group_metrics(data, mask):
-    """Precision, Recall, F1 của 6 nhóm tuổi trên test, theo ngưỡng đang dùng trong app."""
-    predicted = np.array([age_group(value) for value in data['predicted_age'][mask]])
-    truth = data['group'][mask]
-    table = {}
-    for name in AGE_GROUPS:
-        tp, fp, fn = ((predicted == name) & (truth == name)).sum(), ((predicted == name) & (truth != name)).sum(), ((predicted != name) & (truth == name)).sum()
-        table[name] = {'count': int((truth == name).sum()), 'precision': float(tp / max(tp + fp, 1)),
-                       'recall': float(tp / max(tp + fn, 1)), 'f1': float(2 * tp / max(2 * tp + fp + fn, 1))}
-    return table
+def gap(table, names):
+    """Khoảng cách độ chính xác giới tính giữa nhóm tốt nhất và kém nhất."""
+    ranked = sorted(names, key=lambda name: table[name]['gender_accuracy'])
+    return {'gap': table[ranked[-1]]['gender_accuracy'] - table[ranked[0]]['gender_accuracy'],
+            'lowest': ranked[0], 'highest': ranked[-1]}
 
 
 def reliability_plot(before, after, path):
@@ -159,41 +125,36 @@ def main():
     data = load(args.predictions)
     validation, test = data['validation'], ~data['validation']
     temperature = fit_temperature(data['logit'][validation], data['male'][validation])
-    table = fit_intervals(data['predicted_age'][validation], data['age'][validation])
     before, after = sigmoid(data['logit']), sigmoid(data['logit'] / temperature)
     report = {
         'validation_count': int(validation.sum()), 'test_count': int(test.sum()), 'temperature': temperature,
         'gender_test_before': binary_metrics(before[test], data['male'][test]),
         'gender_test_after': binary_metrics(after[test], data['male'][test]),
-        'age_interval': {'target_coverage': INTERVAL_COVERAGE, 'table': table,
-                         'test': interval_coverage(data['predicted_age'][test], data['age'][test], table)},
         'bootstrap': {'seed': BOOTSTRAP_SEED, 'rounds': BOOTSTRAP_ROUNDS, 'unit': 'ảnh; UTKFace không có ID người'},
         'subgroups_test': {}}
     subgroups = {'gender=female': ~data['male'], 'gender=male': data['male']}
-    subgroups.update({f'age={name}': data['group'] == name for name in AGE_GROUPS})
+    subgroups.update({f'age={name}': data['group'] == name for name in TRUE_AGE_GROUPS})
     subgroups.update({f'gender={sex}, age={name}': mask & (data['group'] == name)
-                      for sex, mask in (('female', ~data['male']), ('male', data['male'])) for name in AGE_GROUPS})
+                      for sex, mask in (('female', ~data['male']), ('male', data['male'])) for name in TRUE_AGE_GROUPS})
     for name, mask in subgroups.items():
         report['subgroups_test'][name] = subgroup(mask & test, after, data)
     groups = report['subgroups_test']
-    report['age_group_metrics_test'] = age_group_metrics(data, test)
     report['gaps_test'] = {
-        'theo giới tính': gaps(groups, ['gender=female', 'gender=male']),
-        'theo nhóm tuổi': gaps(groups, [f'age={name}' for name in AGE_GROUPS]),
-        'giới tính × nhóm tuổi': gaps(groups, [key for key in groups if ', ' in key])}
+        'theo giới tính': gap(groups, ['gender=female', 'gender=male']),
+        'theo nhóm tuổi thật': gap(groups, [f'age={name}' for name in TRUE_AGE_GROUPS]),
+        'giới tính × nhóm tuổi thật': gap(groups, [key for key in groups if ', ' in key])}
     args.report_dir.mkdir(parents=True, exist_ok=True)
     reliability_plot(report['gender_test_before']['reliability'], report['gender_test_after']['reliability'],
                      args.report_dir / 'gender_reliability.png')
     (args.report_dir / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     args.output.write_text(json.dumps({
-        'gender_temperature': temperature, 'age_intervals': table, 'interval_coverage': INTERVAL_COVERAGE,
+        'gender_temperature': temperature,
         'fitted_on': 'UTKFace validation (SHA-256 tên file % 5 == 0), crop_scale 1.5'}, ensure_ascii=False, indent=2),
         encoding='utf-8')
     gender = report['gender_test_before'], report['gender_test_after']
     print(f"T={temperature:.2f}; ECE {gender[0]['ece']:.4f} -> {gender[1]['ece']:.4f}; "
           f"Brier {gender[0]['brier']:.4f} -> {gender[1]['brier']:.4f}; "
-          f"log loss {gender[0]['log_loss']:.4f} -> {gender[1]['log_loss']:.4f}; "
-          f"độ phủ khoảng tuổi test {report['age_interval']['test']['coverage']:.3f}")
+          f"log loss {gender[0]['log_loss']:.4f} -> {gender[1]['log_loss']:.4f}")
     return 0
 
 

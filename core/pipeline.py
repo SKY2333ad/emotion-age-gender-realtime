@@ -1,4 +1,4 @@
-"""MediaPipe + EfficientNet webcam pipeline. Square aligned crops, stable track IDs, quality-aware smoothing and optional learned blendshape correction. Run: python core/pipeline.py (a: align, 1/2: checkpoint, q: quit)."""
+"""MediaPipe + EfficientNet webcam pipeline. Square aligned crops, stable track IDs and quality-aware smoothing. Run: python core/pipeline.py (a: align, 1/2: checkpoint, q: quit)."""
 import collections
 import sys
 import threading
@@ -9,15 +9,11 @@ import numpy as np
 
 from detectors import detect_faces, crop_face, align_crop
 from predict import predict, LABELS, MODEL_NAMES, DEFAULT_MODEL
-from predict import MODEL_DIR
-from fusion import Fusion
 from attributes import calibrate_probability, load_calibration, predict_attributes
-from quality import EmotionSmoother, face_quality, weighted_mean, weighted_median
+from quality import EmotionSmoother, face_quality, weighted_mean
 from quality import BLOCKING, POSE_ALIGN_DEG, input_status, max_pose_angle, output_status
 from tracker import FaceTracker
-from ui_helpers import age_group
-from webcam_data import configure_console
-import os
+from webcam_data import DEFAULT_CROP_MARGIN, configure_console
 
 DETECT_EVERY = 1
 DETECT_WIDTH = 480
@@ -30,14 +26,14 @@ GENDER_HYSTERESIS = 0.05
 
 
 class Pipeline:
-    def __init__(self, smooth_n=SMOOTH_N, detect_every=DETECT_EVERY, align=True, crop_margin=0.0,
-                 fusion_path=None, attributes=True, attr_every=ATTR_EVERY, attr_history=ATTR_HISTORY,
+    def __init__(self, smooth_n=SMOOTH_N, detect_every=DETECT_EVERY, align=True,
+                 crop_margin=DEFAULT_CROP_MARGIN,
+                 attributes=True, attr_every=ATTR_EVERY, attr_history=ATTR_HISTORY,
                  track_grace=TRACK_GRACE, smoothing='adaptive', quality_gate=False):
         if smooth_n < 1 or detect_every < 1 or not 0 <= crop_margin <= 0.5:
             raise ValueError("smooth_n/detect_every phải >= 1; crop_margin trong [0, 0.5].")
         self.smooth_n, self.detect_every, self.align = smooth_n, detect_every, align
         self.crop_margin = crop_margin
-        self.fusion_path = fusion_path
         if attr_every < 1 or attr_history < 1:
             raise ValueError('Chu kỳ và kích thước bộ đệm thuộc tính phải >= 1.')
         if smoothing not in ('adaptive', 'mean'):
@@ -47,10 +43,8 @@ class Pipeline:
         self.tracker = FaceTracker(track_grace)
         calibration = load_calibration()
         self.gender_temperature = calibration['gender_temperature']
-        self.age_intervals = calibration['age_intervals']
         self.attributes = attributes
         self.attr_every, self.attr_history = attr_every, attr_history
-        self._fusion = None
         self.reset()
         self._ctx = None
 
@@ -59,7 +53,6 @@ class Pipeline:
         self._faces = []
         self.tracker.reset()
         self._hist = {}          # key = track ID -> deque xác suất
-        self._hist_modes = {}
         self._smoothers = {}
         self._attr_hist = {}
         self._attr_last = {}
@@ -68,24 +61,19 @@ class Pipeline:
 
     def _forget_lost_tracks(self):
         for key in [key for key in self._hist if key not in self.tracker.tracks]:
-            for state in (self._hist, self._hist_modes, self._smoothers,
+            for state in (self._hist, self._smoothers,
                           self._attr_hist, self._attr_last, self._attr_results):
                 state.pop(key, None)
 
     def _ensure_state(self, key):
         self._hist.setdefault(key, collections.deque(maxlen=self.smooth_n))
-        self._hist_modes.setdefault(key, None)
         if self.attributes and key not in self._attr_hist:
             self._attr_hist[key] = collections.deque(maxlen=self.attr_history)
             self._attr_last[key] = None
             self._attr_results[key] = None
 
-    def _smooth(self, key, probs, fusion_used, quality):
-        """Trả (xác suất đã làm mượt, nhãn); đổi nguồn fusion/EfficientNet thì bỏ lịch sử cũ."""
-        if self._hist_modes[key] != fusion_used:
-            self._hist[key].clear()
-            self._smoothers.pop(key, None)
-        self._hist_modes[key] = fusion_used
+    def _smooth(self, key, probs, quality):
+        """Trả (xác suất đã làm mượt, nhãn)."""
         if self.smoothing == 'adaptive':
             smoother = self._smoothers.setdefault(key, EmotionSmoother(LABELS))
             return smoother.update(probs, quality)
@@ -100,15 +88,14 @@ class Pipeline:
             try:
                 result = predict_attributes(frame_bgr, face['box'], face.get('angle', 0.0))
             except (OSError, RuntimeError, ValueError) as exc:
-                self.attribute_error = f'Không nhận diện được tuổi/giới tính: {exc} Cảm xúc vẫn tiếp tục chạy.'
+                self.attribute_error = f'Không nhận diện được giới tính: {exc} Cảm xúc vẫn tiếp tục chạy.'
                 result = None
             if result is not None:
                 p_male = calibrate_probability(result['gender_prob'] if result['gender'] == 'male'
                                                else 1 - result['gender_prob'], self.gender_temperature)
                 history = self._attr_hist[key]
-                history.append((result['age'], p_male, quality))
-                weights = [entry[2] for entry in history]
-                mean = weighted_mean([entry[1] for entry in history], weights)
+                history.append((p_male, quality))
+                mean = weighted_mean([entry[0] for entry in history], [entry[1] for entry in history])
                 previous = self._attr_results[key]
                 gender = previous['gender'] if previous else ('male' if mean >= 0.5 else 'female')
                 # Giữ nhãn cũ khi trung bình dao động sát 0.5, vẫn trả xác suất trung bình thật.
@@ -116,11 +103,7 @@ class Pipeline:
                     gender = 'male'
                 elif mean < 0.5 - GENDER_HYSTERESIS:
                     gender = 'female'
-                age = weighted_median([entry[0] for entry in history], weights)
-                offsets = self.age_intervals.get(age_group(age))
-                self._attr_results[key] = {
-                    'age': age, 'age_range': (max(age + offsets[0], 0.0), age + offsets[1]) if offsets else None,
-                    'gender': gender, 'gender_prob': mean if gender == 'male' else 1 - mean}
+                self._attr_results[key] = {'gender': gender, 'gender_prob': mean if gender == 'male' else 1 - mean}
         return self._attr_results[key]
 
     def process_frame(self, frame_bgr, detector="mediapipe", model=None):
@@ -130,18 +113,15 @@ class Pipeline:
         if frame_bgr is None or frame_bgr.size == 0:
             return []
         context = (detector, model, self.align, self.crop_margin, self.smooth_n,
-                   self.detect_every, frame_bgr.shape[:2], str(self.fusion_path),
+                   self.detect_every, frame_bgr.shape[:2],
                    self.attributes, self.attr_every, self.attr_history, self.smoothing)
         if self._ctx != context:                # đổi cách crop/model -> bỏ lịch sử cũ
-            correction = (Fusion(self.fusion_path, os.path.join(MODEL_DIR, model + '.keras'),
-                                 self.crop_margin, self.align) if self.fusion_path else None)
             self.reset()
             self._ctx = context
-            self._fusion = correction
         self._n += 1
         H, W = frame_bgr.shape[:2]
 
-        if self._fusion or (self._n - 1) % self.detect_every == 0 or not self._faces:
+        if (self._n - 1) % self.detect_every == 0 or not self._faces:
             s = DETECT_WIDTH / W if W > DETECT_WIDTH else 1.0
             small = cv2.resize(frame_bgr, (int(W * s), int(H * s))) if s < 1 else frame_bgr
             self._faces = [dict(f, box=tuple(int(v / s) for v in f["box"]))
@@ -158,29 +138,22 @@ class Pipeline:
             quality = face_quality(frame_bgr, box, f.get('angle', 0.0), f.get('yaw', 0.0))
             status = input_status(f, quality) if self.quality_gate else None
             if status in BLOCKING:
-                # Không gọi model, không đưa khung kém vào bộ làm mượt hay lịch sử tuổi/giới tính.
+                # Không gọi model, không đưa khung kém vào bộ làm mượt hay lịch sử giới tính.
                 out.append({'box': box, 'track_id': key, 'quality': quality['score'], 'status': status,
                             'label': None, 'prob': 0.0, 'probs': {}, 'raw_probs': {}, 'top3': {},
-                            'fusion_used': False, 'age': None, 'age_range': None, 'gender': None,
-                            'gender_prob': None})
+                            'gender': None, 'gender_prob': None})
                 continue
             _, _, probs = predict(face, model)
             raw_probs = probs.copy()
-            fusion_used = False
-            if (self._fusion and f['blendshapes'] and
-                    all(name in f['blendshapes'] for name in self._fusion.names)):
-                probs = self._fusion.predict(probs, f['blendshapes'])
-                fusion_used = True
             self._ensure_state(key)
-            avg, lab = self._smooth(key, probs, fusion_used, quality['score'])
+            avg, lab = self._smooth(key, probs, quality['score'])
             top3 = sorted(avg, key=avg.get, reverse=True)[:3]
             r = {"box": box, 'track_id': key, 'quality': quality['score'], "label": lab, "prob": avg[lab],
-                 "probs": avg, 'raw_probs': raw_probs, 'top3': {label: avg[label] for label in top3},
-                 'fusion_used': fusion_used}
+                 "probs": avg, 'raw_probs': raw_probs, 'top3': {label: avg[label] for label in top3}}
             if f["blendshapes"] is not None:
                 r["blendshapes"] = f["blendshapes"]
             attrs = self._attributes_for_face(frame_bgr, f, key, quality['score']) if self.attributes else None
-            r.update(attrs or {'age': None, 'age_range': None, 'gender': None, 'gender_prob': None})
+            r.update(attrs or {'gender': None, 'gender_prob': None})
             if status:
                 r['status'] = output_status(status, f, r['prob'])
             out.append(r)

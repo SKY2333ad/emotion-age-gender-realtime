@@ -1,0 +1,32 @@
+AI SMART PHOTO BOOTH - HƯỚNG DẪN CHẠY NHANH
+================================================
+
+1. Giải nén toàn bộ file ZIP vào một thư mục bình thường.
+2. Nhấp đúp: run_photo_booth.bat
+3. Lần chạy đầu cần Internet. Batch sẽ tự:
+   - tìm/cài Python 3.13 nếu máy có winget;
+   - tạo thư mục venv (dùng chung với app Streamlit);
+   - cài các thư viện AI;
+   - khởi động server;
+   - mở http://127.0.0.1:4173 trên trình duyệt.
+4. Những lần sau chỉ cần chạy lại run_photo_booth.bat và sẽ nhanh hơn.
+5. Muốn dừng server: chạy STOP_AI_PHOTO_BOOTH.bat.
+
+CHẠY QUA INTERNET (TÙY CHỌN)
+-----------------------------
+- Chạy START_PUBLIC_PHOTO_BOOTH.bat.
+- Máy cần có ngrok và đã cấu hình authtoken của chính người dùng.
+- Không có ngrok thì website local vẫn hoạt động bình thường.
+
+DEEPAR
+------
+- DeepAR cần License Key hợp lệ cho domain đang mở (localhost hoặc domain public).
+- Key được nhập một lần và lưu trong localStorage của trình duyệt.
+- Không đóng gói authtoken ngrok hoặc License Key cá nhân vào ZIP để tránh lộ thông tin.
+
+YÊU CẦU
+-------
+- Windows 10/11 64-bit.
+- Internet ở lần chạy đầu để cài Python/thư viện và tải DeepAR SDK.
+- Khoảng 4 GB dung lượng trống cho môi trường AI.
+- Webcam và trình duyệt Chrome/Edge mới.

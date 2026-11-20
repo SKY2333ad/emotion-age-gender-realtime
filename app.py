@@ -17,16 +17,15 @@ import pandas as pd
 import streamlit as st
 
 from pipeline import CameraThread, Pipeline
-from predict import DEFAULT_MODEL, EXPERIMENTAL_MODELS, MODEL_NAMES
+from predict import DEFAULT_MODEL, MODEL_NAMES
 from ui_helpers import LABELS, draw_results, filter_results, result_row
-from ui_helpers import AGE_GROUPS, GENDER_NAMES, age_group, detail_text
+from ui_helpers import GENDER_NAMES, detail_text
 
 
 # ---------------------------------------------------------------- Cấu hình (sửa ở đây khi nhóm chốt)
 MODEL_OPTIONS = {'EfficientNet (baseline)': 'efficientnet'}
 MODEL_OPTIONS.update({f'EfficientNet — {name.removeprefix("efficientnet_")}': name
                       for name in MODEL_NAMES if name != 'efficientnet'})
-MODEL_OPTIONS.update({f'{name} (thử nghiệm)': name for name in EXPERIMENTAL_MODELS})
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 MAX_ROWS = 5000                                # giới hạn số dòng thống kê trong một phiên
 
@@ -40,24 +39,9 @@ with st.sidebar:
     model_label = st.selectbox("Mô hình", list(MODEL_OPTIONS),
                                index=list(MODEL_OPTIONS.values()).index(DEFAULT_MODEL))
     model_name = MODEL_OPTIONS[model_label]
-    use_attributes = st.checkbox('Nhận diện tuổi và giới tính', value=True)
+    use_attributes = st.checkbox('Nhận diện giới tính', value=True)
     quality_gate = st.checkbox('Kiểm tra chất lượng đầu vào', value=True,
                                help='Không dự đoán khi mặt nghiêng quá 30°, nhỏ hơn 80 px, quá tối hoặc mờ.')
-    fusion_file = Path(__file__).resolve().parent / 'models' / 'efficientnet_fusion.json'
-    fusion_config = None
-    if fusion_file.exists():
-        try:
-            fusion_config = json.loads(fusion_file.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            st.error('Không đọc được bộ kết hợp MediaPipe.')
-    fusion_compatible = bool(fusion_config and fusion_config.get('base_model') == model_name)
-    use_fusion = st.checkbox("Kết hợp đặc trưng MediaPipe", value=fusion_compatible, disabled=not fusion_compatible,
-                             key='fusion_' + model_name,
-                             help="Chỉ khả dụng sau khi train fusion và cải thiện trên validation.")
-    if fusion_config is None:
-        st.caption("Chưa có bộ kết hợp được huấn luyện.")
-    elif not fusion_compatible:
-        st.caption('Bộ kết hợp hiện dùng cho checkpoint: ' + fusion_config['base_model'])
 threshold = 0.0                                # không lọc theo ngưỡng tin cậy
 
 
@@ -80,8 +64,7 @@ def record(results, source):
 
 def run(pipe, frame_bgr):
     """Gọi pipeline đúng hợp đồng, lọc theo ngưỡng, trả (ảnh đã vẽ, kết quả)."""
-    pipe.align, pipe.crop_margin = True, 0.0        # cố định: lề 0 khớp ảnh RAF-DB lúc train EfficientNet và fusion
-    pipe.fusion_path = str(fusion_file) if use_fusion else None
+    pipe.align, pipe.crop_margin = True, 0.0        # cố định: lề 0 khớp ảnh RAF-DB lúc train EfficientNet
     pipe.attributes = use_attributes
     pipe.quality_gate = quality_gate
     results = filter_results(pipe.process_frame(frame_bgr, detector, model_name), threshold)
@@ -149,8 +132,7 @@ with tab_live:
                     view.image(rgb(annotated))
                     if results:
                         largest_result = max(results, key=lambda r: r['box'][2] * r['box'][3])
-                        mode = 'EfficientNet + blendshape' if largest_result['fusion_used'] else model_label
-                        summary = mode + ' · Top 3: ' + ' · '.join(f'{k}: {v:.0%}' for k, v in largest_result['top3'].items())
+                        summary = model_label + ' · Top 3: ' + ' · '.join(f'{k}: {v:.0%}' for k, v in largest_result['top3'].items())
                         summary += ' · ' + detail_text(largest_result)
                         if largest_result['label'] is None:
                             status.warning(detail_text(largest_result))
@@ -192,31 +174,20 @@ with tab_stats:
                 line["timestamp"] = pd.to_datetime(line["timestamp"], errors="coerce")
                 line = line.set_index("timestamp").rename(columns=lambda c: c[5:])
                 st.line_chart(line)
-        st.caption('Thống kê tuổi/giới tính tính theo lượt mặt được ghi nhận, không phải số người riêng biệt. '
+        st.caption('Thống kê giới tính tính theo lượt mặt được ghi nhận, không phải số người riêng biệt. '
                    'Đây là ước lượng từ hình dáng khuôn mặt, có thể sai; bỏ qua lượt chưa có ước lượng.')
-        attr_left, attr_right = st.columns(2)
-        with attr_left:
-            st.caption('Tỉ lệ nam/nữ ước lượng trong phiên (%)')
-            genders = df['gender'].dropna() if 'gender' in df else pd.Series(dtype=str)
-            genders = genders[genders.isin(GENDER_NAMES)]
-            if len(genders):
-                gender_share = genders.value_counts(normalize=True).reindex(GENDER_NAMES).fillna(0) * 100
-                st.bar_chart(gender_share.rename(index=GENDER_NAMES))
-            else:
-                st.info('Chưa có ước lượng giới tính.')
-        with attr_right:
-            st.caption('Phân bố nhóm tuổi ước lượng (lượt ghi nhận)')
-            groups = df['age'].map(age_group).dropna() if 'age' in df else pd.Series(dtype=str)
-            if len(groups):
-                st.bar_chart(groups.value_counts().reindex(AGE_GROUPS).fillna(0))
-            else:
-                st.info('Chưa có ước lượng tuổi.')
+        st.caption('Tỉ lệ nam/nữ ước lượng trong phiên (%)')
+        genders = df['gender'].dropna() if 'gender' in df else pd.Series(dtype=str)
+        genders = genders[genders.isin(GENDER_NAMES)]
+        if len(genders):
+            gender_share = genders.value_counts(normalize=True).reindex(GENDER_NAMES).fillna(0) * 100
+            st.bar_chart(gender_share.rename(index=GENDER_NAMES))
+        else:
+            st.info('Chưa có ước lượng giới tính.')
         display_df = df.copy()
-        if 'age' in display_df:
-            display_df['age'] = display_df['age'].map(age_group)
         if 'gender' in display_df:
             display_df['gender'] = display_df['gender'].map(GENDER_NAMES)
-        display_df = display_df.rename(columns={'age': 'Nhóm tuổi ước lượng', 'gender': 'Giới tính ước lượng',
+        display_df = display_df.rename(columns={'gender': 'Giới tính ước lượng',
                                                  'gender_prob': 'Xác suất giới tính'})
         st.dataframe(display_df.iloc[::-1])
         st.download_button("⬇ Tải báo cáo phiên (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
@@ -244,7 +215,7 @@ with tab_exp:
                 st.dataframe(pd.DataFrame([{
                     'Model': name, 'Tập': 'validation', 'Accuracy': scores['accuracy'],
                     'Macro-F1': scores['macro_f1'], 'Sad F1': scores['per_class']['sad']['f1'],
-                    'Fear F1': scores['per_class']['fear']['f1']
+                    'Angry F1': scores['per_class']['angry']['f1']
                 } for name, scores in stages]), hide_index=True)
                 st.caption(f"Trạng thái: {report_data.get('status', 'unknown')} · Epoch được chọn: {report_data.get('best_epoch', 0)}")
                 if report_data.get('best_epoch') == 0:

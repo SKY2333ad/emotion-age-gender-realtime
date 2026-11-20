@@ -1,0 +1,2 @@
+﻿model,dataset,split,images,accuracy,macro_f1,sad_f1,angry_f1
+efficientnet,RAF-DB,test,2834,0.8489767113620325,0.8177144010738321,0.8226950354609929,0.7383720930232557

@@ -1,0 +1,11 @@
+{
+  "name": "ai-smart-photo-booth",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/filterPolicy.test.mjs tests/expressionFusion.test.mjs tests/frameLayouts.test.mjs tests/deepARAdapter.test.mjs tests/ambientEffects.test.mjs tests/genderFilters.test.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.3"
+  }
+}

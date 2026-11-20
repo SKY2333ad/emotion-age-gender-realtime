@@ -1,6 +1,6 @@
 # Phân tích khuôn mặt thời gian thực
 
-App webcam nhận diện **cảm xúc, nhóm tuổi, giới tính ước lượng** và **theo dõi ID** từng khuôn mặt. Chạy cục bộ trên CPU, không gửi ảnh ra ngoài. Đồ án của nhóm Vinh, Tiến, Toàn.
+App webcam nhận diện **5 cảm xúc** (ngạc nhiên, vui, buồn, tức giận, bình thản), **giới tính ước lượng** và **theo dõi ID** từng khuôn mặt. Chạy cục bộ trên CPU, không gửi ảnh ra ngoài. Đồ án của nhóm Vinh, Tiến, Toàn.
 
 ## Chạy app
 
@@ -21,35 +21,44 @@ Mở `http://localhost:8501` nếu trình duyệt không tự mở, rồi vào t
 | `Không mở được webcam` | Đóng ứng dụng khác đang dùng camera, kiểm tra quyền camera của Windows |
 | Muốn cài lại từ đầu | Xóa thư mục `venv`, rồi chạy lại `.\setup.bat` |
 
-Kiểm tra code (73 test, khoảng 30 giây):
+Kiểm tra code (62 test):
 
 ```powershell
 .\venv\Scripts\python.exe scripts/check_sync.py
 .\venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
+## Web AI Smart Photo Booth
+
+Website chụp 3 ảnh theo chủ đề (Ngầu, Sinh nhật, Kinh dị, Giáng sinh), dùng cùng pipeline cảm xúc, giới tính và cổng chất lượng ở trên qua API `/api/analyze`. Trình duyệt chạy thêm MediaPipe FaceLandmarker để lấy blendshape, gộp với xác suất EfficientNet (0,65 / 0,35). Filter khuôn mặt vẽ bằng Canvas bám theo 478 điểm mốc, chạy sẵn không cần cài thêm: mỗi cảm xúc có một filter cho nam và một filter cho nữ (10 filter, `dist/ar/filters/expressionMatrix.js`); chủ đề chỉ đổi không khí nền (mũ tiệc, tuyết, dơi...). Giới tính chưa đủ chắc (dưới 0,75) thì chỉ hiện viền màu theo cảm xúc. Filter nâng cao DeepAR (chủ đề Ngầu) và thay nền phía sau là tùy chọn, cần License Key DeepAR: mở `http://localhost:4173/#setup` để nhập key một lần, key chỉ lưu trong `localStorage` của trình duyệt. Chưa có key thì giao diện không hiện hai mục này.
+
+```powershell
+.\run_photo_booth.bat           # mở http://127.0.0.1:4173, dùng chung venv với app Streamlit
+.\STOP_AI_PHOTO_BOOTH.bat       # dừng server
+```
+
+`START_PUBLIC_PHOTO_BOOTH.bat` mở thêm đường hầm ngrok ra Internet nếu máy đã cài ngrok và có authtoken. Server chỉ nghe `127.0.0.1` và không ghi ảnh xuống đĩa. Mã nguồn web nằm trong `sites/ai-smart-photo-booth/`; test phía web chạy bằng `npm test` trong thư mục đó.
+
 ## Tình trạng hiện tại
 
 | Hạng mục | Kết quả |
 | --- | --- |
-| Cài mới bằng `setup.bat`, 67 test, app khởi động | Đạt, đã thử trên bản sao sạch |
-| Tốc độ, 1 mặt, 640×480 | **30 FPS** (trước đó 23). Chưa tính camera và Streamlit |
-| Tốc độ, 3 mặt | **13 FPS** (trước đó 9) |
-| Theo dõi ID | Không tráo ID trên 5 kịch bản mô phỏng (trước đó 13 lần) |
+| Tốc độ, 1 mặt, 640×480, đủ chức năng | **22 FPS** (46 ms/khung, chạy Keras). Chưa tính camera và Streamlit |
+| Tốc độ, 3 mặt, đủ chức năng | **9 FPS** (116 ms/khung) |
+| Theo dõi ID | Không tráo ID trên 5 kịch bản mô phỏng |
 | Xác suất giới tính | Đã hiệu chuẩn, ECE từ 0,094 xuống 0,009 |
 | Giới tính, UTKFace | Đúng 85,4% |
-| Tuổi, UTKFace | Sai trung bình 10,3 năm, đúng nhóm tuổi 47,4% |
-| Cảm xúc, RAF-DB test (3.068 ảnh, crop như app) | Accuracy 80,3%, macro-F1 0,722 (EfficientNet + fusion, lề 0) |
-| Cảm xúc, RAF-DB validation | Accuracy 90,6%, macro-F1 0,882 (EfficientNet + fusion; lạc quan vì model đã thấy ảnh train) |
-| **Cảm xúc, webcam thật** | **Chưa đo trên bản mới.** Bản cũ, 1 người, quay chính diện: chỉ 34,4% |
+| Cảm xúc, RAF-DB test (2.834 ảnh, crop như app) | Accuracy 84,9%, macro-F1 0,818 (EfficientNet 5 lớp, lề 0) |
+| Cảm xúc, RAF-DB validation | Accuracy 92,9%, macro-F1 0,922 (dùng để chọn epoch nên lạc quan) |
+| **Cảm xúc, webcam thật** | **Chưa đo** |
 
 **Cần biết trước khi demo:**
 
-- Chưa thử app với người thật trước webcam. Camera mới được kiểm tra đọc khung ở 30 FPS.
-- Fear, sad, disgust từng đúng 0 khung trên webcam ở bản cũ, và model mặc định vẫn dự đoán như trước.
+- Chưa đo độ chính xác trên webcam với người thật.
+- Trên RAF-DB, angry và sad là hai lớp yếu nhất (F1 0,75 và 0,82); trên webcam chưa có số.
 - Giới tính rất kém với trẻ em và thiếu niên nam: bé trai 0–12 tuổi đúng **48,6%**, nam 13–19 đúng **52,9%**, nữ 50+ đúng **74,3%**. Hệ thống chưa thể gọi là công bằng.
-- Tuổi và giới tính chỉ là ước lượng từ hình dáng khuôn mặt, không xác định bản dạng giới của một người. Không dùng để ra quyết định về ai.
-- Bản mới dùng CPU nhiều gấp đôi (khoảng 440%), máy sẽ nóng hơn.
+- Giới tính chỉ là ước lượng từ hình dáng khuôn mặt, không xác định bản dạng giới của một người. Không dùng để ra quyết định về ai.
+- App dùng khoảng 200% CPU và 530 MB RAM khi chạy.
 
 ## Cách hệ thống hoạt động
 
@@ -59,8 +68,8 @@ Webcam → luôn lấy khung mới nhất
        → Crop vuông, xoay cho thẳng mắt
        → Gán ID, giữ ID 10 khung khi mặt tạm mất
        → Chấm điểm chất lượng mặt; mặt kém thì dừng ở đây và báo lý do
-       → Cảm xúc: EfficientNet → hiệu chỉnh bằng blendshape → làm mượt
-       → Tuổi, giới tính: mỗi 5 khung → hiệu chuẩn → gộp 12 lần gần nhất
+       → Cảm xúc: EfficientNet 5 lớp → làm mượt
+       → Giới tính: mỗi 5 khung → hiệu chuẩn → gộp 12 lần gần nhất
        → Vẽ lên màn hình
 ```
 
@@ -77,7 +86,9 @@ Webcam → luôn lấy khung mới nhất
 
 Yaw, pitch lấy từ ma trận xoay của MediaPipe, còn roll lấy từ đường nối hai mắt. Các ngưỡng là giá trị ban đầu, **chưa hiệu chỉnh trên webcam**. Căn chỉnh 2D chỉ sửa được roll, không sửa được yaw hay pitch. `Pipeline(quality_gate=False)` là mặc định cho script đánh giá, để kết quả cũ không đổi.
 
-Thiếu model tuổi/giới tính thì cảm xúc vẫn chạy. Thiếu hoặc sai file ONNX thì app tự dùng Keras, chậm hơn nhưng cùng kết quả.
+**Model cảm xúc.** `efficientnet.keras` là model 5 lớp (`surprise, happy, sad, angry, neutral`), fine-tune bằng `train_rafdb.py` trên RAF-DB train đã bỏ fear và disgust; epoch 3 được chọn theo validation (`results/training/rafdb5/`). App chạy model bằng Keras trên CPU.
+
+`genderage.onnx` trả cả tuổi lẫn giới tính trong một lần chạy; dự án chỉ dùng giới tính. Thiếu model giới tính thì cảm xúc vẫn chạy.
 
 ## Đọc code ở đâu
 
@@ -99,79 +110,70 @@ results/            số liệu đo được
 | `tracker.py` | Giữ ID qua các khung |
 | `quality.py` | Điểm chất lượng, làm mượt |
 | `predict.py` | Dự đoán cảm xúc |
-| `fusion.py` | Hiệu chỉnh cảm xúc bằng blendshape |
-| `attributes.py` | Tuổi, giới tính, hiệu chuẩn |
-| `ui_helpers.py` | Nhóm tuổi, vẽ khung, dòng thống kê |
+| `attributes.py` | Giới tính, hiệu chuẩn |
+| `ui_helpers.py` | Vẽ khung, dòng thống kê |
 | `preprocessing.py`, `selection.py`, `webcam_data.py` | Tiền xử lý, luật chọn checkpoint, đọc ghi dữ liệu |
 
 | Nhóm script | File |
 | --- | --- |
 | Thử trên webcam | `condition_test.py`, `run_conditions.py`, `summarize_conditions.py`, `summarize_by_expr.py` |
 | Đánh giá cảm xúc | `evaluate_rafdb.py`, `evaluate_webcam.py` |
-| Đánh giá tuổi, giới tính | `evaluate_utkface_attributes.py`, `calibrate_age_groups.py`, `calibrate_attributes.py`, `select_attribute_config.py` |
+| Đánh giá giới tính | `evaluate_utkface_attributes.py`, `calibrate_attributes.py` |
 | Đo pipeline | `evaluate_tracking.py`, `evaluate_quality.py`, `benchmark_pipeline.py` |
-| ONNX | `export_onnx.py`, `check_onnx.py` |
-| Train RAF-DB | `prepare_rafdb.py`, `prepare_webcam.py`, `train_rafdb.py`, `train_fusion.py` |
+| Train RAF-DB | `prepare_rafdb.py`, `prepare_webcam.py`, `train_rafdb.py` |
 | Khác | `prepare_public_data.py`, `summarize_final.py`, `check_sync.py` |
 
 ## Việc còn lại của nhóm
 
 **1. Thử app với người thật:** một mặt và hai mặt, đổi chỗ, che mặt, đổi biểu cảm, thiếu sáng, quay ngang, chạy 30 phút, rút camera khi đang chạy.
 
-**2. So model trên webcam.** Sidebar của app có 2 lựa chọn; số dưới là RAF-DB test, 3.068 ảnh (`results/rafdb_test/`):
+**2. Đo model trên webcam.** Số dưới là RAF-DB test, 2.834 ảnh (`results/rafdb_test/`):
 
-| Trong sidebar | Tên trong lệnh | Accuracy | Macro-F1 | Fear / Sad / Disgust (F1) |
+| Trong sidebar | Tên trong lệnh | Accuracy | Macro-F1 | Sad / Angry (F1) |
 | --- | --- | --- | --- | --- |
-| EfficientNet (baseline), mặc định | `efficientnet` | 79,8% | 0,713 | 0,58 / 0,77 / 0,48 |
-| hsemotion (thử nghiệm) | `hsemotion` | 70,6% | 0,563 | 0,33 / 0,78 / 0,36 |
+| EfficientNet (baseline), mặc định | `efficientnet` | 84,8% | 0,819 | 0,82 / 0,75 |
 
-RAF-DB không phải webcam, nên vẫn cần so trực tiếp. Chạy lệnh dưới cho đủ 7 biểu cảm (`surprise fear disgust happy sad angry neutral`), nên từ 3 người trở lên. Lệnh chỉ ghi số liệu, không lưu ảnh:
+RAF-DB không phải webcam, nên vẫn cần so trực tiếp. Chạy lệnh dưới cho đủ 5 biểu cảm (`surprise happy sad angry neutral`), nên từ 3 người trở lên. Lệnh chỉ ghi số liệu, không lưu ảnh:
 
 ```powershell
-.\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model efficientnet --fusion models/efficientnet_fusion.json --out results/webcam_baseline.csv
-.\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model hsemotion --out results/webcam_hsemotion.csv
+.\venv\Scripts\python.exe scripts/condition_test.py --who nguoi01 --expr sad --model efficientnet --out results/webcam_baseline.csv
 ```
 
 ## Chi tiết kết quả
 
 Máy đo: Intel i5-10210U, 16 GB RAM, chỉ CPU. Chọn cấu hình chỉ trên validation, test chỉ để báo cáo, seed 42. Số gốc nằm trong `results/`.
 
-| Chỉ số | Trước | Sau |
+| Chỉ số | Giá trị | Nguồn |
 | --- | --- | --- |
-| Latency 1 mặt, đầy đủ | 43 ms | 33 ms |
-| Latency 3 mặt, đầy đủ | 108 ms | 79 ms |
-| Bộ nhớ | 531 MB | 442 MB |
-| Trễ tuổi/giới tính (mô phỏng) | 84–95 khung | 28–31 khung |
-| Dao động tuổi (mô phỏng) | 1,39 năm | 1,87 năm (kém hơn) |
+| Latency 1 mặt, đầy đủ | 46 ms (p95 62 ms) | `results/benchmark_pipeline.json` |
+| Latency 3 mặt, đầy đủ | 116 ms | `results/benchmark_pipeline.json` |
+| Bộ nhớ | 530 MB | `results/benchmark_pipeline.json` |
+| Trễ giới tính khi người đổi (mô phỏng) | 31 khung | `results/tracking_evaluation.json` |
 
-"Độ trễ 6 giây" cũ là độ dài cửa sổ gộp tuổi/giới tính (12 × 15 khung), không phải độ trễ xử lý.
+UTKFace test, 18.780 ảnh, CI 95% bootstrap theo ảnh: giới tính đúng 85,4% (84,8–85,9) (`results/final_summary.json`). Nhãn không phải tự khai và không có ID người. Không đánh giá theo chủng tộc vì không có dữ liệu tự khai hợp lệ.
 
-UTKFace test, 18.780 ảnh, CI 95% bootstrap theo ảnh: MAE tuổi 10,27 (10,14–10,41), nhóm tuổi 47,4% (46,7–48,1), macro-F1 43,9% (43,2–44,6), giới tính 85,4% (84,8–85,9). Nhãn không phải tự khai và không có ID người. Không đánh giá theo chủng tộc vì không có dữ liệu tự khai hợp lệ.
+Model được fine-tune từ checkpoint nhóm bàn giao, vốn chưa rõ dữ liệu train ban đầu và gần như chắc đã thấy ảnh RAF-DB train. Validation đạt 92,9% so với 84,8% trên test (`results/rafdb_validation/`, `results/rafdb_test/`), nên chỉ số test mới đáng tin.
 
-RAF-DB test, 3.068 ảnh: EfficientNet hơn HSEmotion khoảng 9 điểm accuracy và 0,15 macro-F1 (`results/rafdb_test/`), nên giữ EfficientNet làm mặc định. HSEmotion nhận ảnh RAF-DB 100×100 phóng lên 224×224, khác ảnh AffectNet nó được train. Dữ liệu train ban đầu của `efficientnet.keras` chưa rõ, nhưng trên validation tách từ RAF-DB train nó đạt 89,3% so với 79,8% trên test (`results/rafdb_validation/`), tức gần như chắc đã thấy ảnh train. Vì vậy chỉ số test mới đáng tin.
+**Lề crop 0.** Ảnh RAF-DB lúc train được cắt sát mặt, nên app dùng lề 0 để ảnh lúc chạy giống ảnh lúc train. Kết quả khi cắt ảnh test giống app: `results/rafdb_test_app/`.
 
-**Lề crop 0.** Ảnh RAF-DB lúc train được cắt sát mặt, nên app và fusion dùng lề 0 để ảnh lúc chạy giống ảnh lúc train; fusion đã train lại trên RAF-DB cắt lề 0 (`prepare_rafdb.py --margin 0`). Kết quả: `results/rafdb_test_fusion/`.
-
-Đã thử nhưng không có lợi: TTA lật ngang, fit lại ngưỡng nhóm tuổi, fine-tune EfficientNet trên RAF-DB. Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
+Điểm chất lượng nhận ra ảnh hỏng rõ, nhưng trên ảnh tự nhiên điểm thấp không đi kèm sai nhiều hơn.
 
 ## Chạy lại đánh giá
 
-Dataset không kèm trong dự án. Cảm xúc dùng RAF-DB: giải nén `RAF-DB.zip` vào `data/rafdb/` sao cho có `data/rafdb/DATASET/train/1..7` và `data/rafdb/DATASET/test/1..7`. Lệnh `prepare_public_data.py` tải UTKFace về `data/`.
+Dataset không kèm trong dự án. Cảm xúc dùng RAF-DB: giải nén `RAF-DB.zip` vào `data/rafdb/` sao cho có `data/rafdb/DATASET/train/<số lớp>` và `data/rafdb/DATASET/test/<số lớp>`. Chỉ giữ 5 thư mục 1 (surprise), 4 (happy), 5 (sad), 6 (angry), 7 (neutral); script báo lỗi nếu còn thư mục 2 hoặc 3. Lệnh `prepare_public_data.py` tải UTKFace về `data/`.
 
 ```powershell
-.\venv\Scripts\python.exe scripts/evaluate_rafdb.py --data-dir data/rafdb/DATASET --models efficientnet hsemotion --split test --output results/rafdb_test_rerun
-.\venv\Scripts\python.exe scripts/check_onnx.py
+.\venv\Scripts\python.exe scripts/evaluate_rafdb.py --data-dir data/rafdb/DATASET --models efficientnet --split test --output results/rafdb_test_rerun
 .\venv\Scripts\python.exe scripts/prepare_public_data.py --utkface
 .\venv\Scripts\python.exe scripts/evaluate_utkface_attributes.py --workers 4 --crop-scale 1.5 --output-dir results/utkface_rerun
 .\venv\Scripts\python.exe scripts/calibrate_attributes.py results/utkface_rerun/predictions.csv --output results/genderage_calibration_rerun.json
-.\venv\Scripts\python.exe scripts/select_attribute_config.py
 .\venv\Scripts\python.exe scripts/evaluate_tracking.py
 .\venv\Scripts\python.exe scripts/evaluate_quality.py
 .\venv\Scripts\python.exe scripts/benchmark_pipeline.py
 .\venv\Scripts\python.exe scripts/summarize_final.py
 ```
 
-Train lại trên RAF-DB cần dataset riêng: `prepare_rafdb.py` → `train_rafdb.py --manifest ...` → `train_fusion.py --manifest ...` → `evaluate_rafdb.py`. Xuất lại ONNX theo hướng dẫn trong `scripts/export_onnx.py`, rồi chạy `check_onnx.py`.
+Train lại trên RAF-DB: `train_rafdb.py --data-dir data/rafdb/DATASET --evaluate-test` → `evaluate_rafdb.py`. Muốn đo kiểu cắt ảnh như app: `prepare_rafdb.py` rồi `evaluate_rafdb.py --manifest ...`.
 
 ## Nguồn và giấy phép
 
@@ -182,6 +184,6 @@ Chỉ dùng cho nghiên cứu và học tập. Không phân phối dataset hoặ
 | MediaPipe Face Landmarker | Google | |
 | `genderage.onnx` | InsightFace `buffalo_l` | Trọng số chỉ cho nghiên cứu phi thương mại |
 | UTKFace | Bản sao `nu-delta/utkface` | Chỉ nghiên cứu phi thương mại |
-| RAF-DB | Bản nhóm có sẵn (`RAF-DB.zip`, 12.271 ảnh train, 3.068 ảnh test) | Chỉ nghiên cứu phi thương mại theo điều khoản của tác giả RAF-DB |
-| HSEmotion | Dự án `face-emotion-recognition`, Apache-2.0 | Huấn luyện trên AffectNet, kiểm tra điều khoản trước khi dùng thương mại |
-| `efficientnet.keras` | Do nhóm bàn giao | Chưa rõ dữ liệu train ban đầu |
+| RAF-DB | Bản nhóm có sẵn (`RAF-DB.zip`); dùng 11.273 ảnh train, 2.834 ảnh test của 5 lớp | Chỉ nghiên cứu phi thương mại theo điều khoản của tác giả RAF-DB |
+| DeepAR SDK và các filter `.deepar` | DeepAR (tải SDK từ jsDelivr lúc chạy) | Cần License Key theo domain; watermark tùy gói license |
+| `efficientnet.keras` | Fine-tune 5 lớp từ checkpoint nhóm bàn giao | Chưa rõ dữ liệu train của checkpoint ban đầu |
